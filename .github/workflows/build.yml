@@ -57,6 +57,17 @@ jobs:
         cd R1XiaozhiApp
         ./gradlew assembleRelease --stacktrace
         
+    # --- 新增：使用 GitHub Actions 插件进行签名 ---
+    - name: Sign Release APK
+      uses: r0adkll/sign-android-release@v1
+      id: sign_app
+      with:
+        releaseDirectory: R1XiaozhiApp/app/build/outputs/apk/release
+        signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+        alias: ${{ secrets.KEY_ALIAS }}
+        keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+        keyPassword: ${{ secrets.KEY_PASSWORD }}
+        
     - name: Get version info
       id: version
       run: |
@@ -77,6 +88,7 @@ jobs:
         echo "=== All APK structure ==="
         find . -name "*.apk" -type f
         
+    # --- 修改：重命名签过名的 APK，并清理未签名的残留 ---
     - name: Rename APKs
       run: |
         cd R1XiaozhiApp/app/build/outputs/apk
@@ -84,12 +96,15 @@ jobs:
         if [ -f "debug/app-debug.apk" ]; then
           mv debug/app-debug.apk debug/R1Xiaozhi-v${{ steps.version.outputs.version_name }}-debug.apk
         fi
-        # Rename release if exists
-        if [ -f "release/app-release.apk" ]; then
-          mv release/app-release.apk release/R1Xiaozhi-v${{ steps.version.outputs.version_name }}-release.apk
-        elif [ -f "release/app-release-unsigned.apk" ]; then
-          mv release/app-release-unsigned.apk release/R1Xiaozhi-v${{ steps.version.outputs.version_name }}-release.apk
+        
+        # 查找签名后的 APK (插件默认会在原名后面加上 -signed)
+        SIGNED_APK=$(find release -name "*signed.apk" -o -name "app-release.apk" | head -n 1)
+        if [ -n "$SIGNED_APK" ]; then
+          mv "$SIGNED_APK" release/R1Xiaozhi-v${{ steps.version.outputs.version_name }}-release.apk
         fi
+        
+        # 删除未签名的 APK，防止被同时上传到 Artifacts 中
+        rm -f release/*unsigned*.apk || true
         
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
