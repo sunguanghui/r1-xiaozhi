@@ -57,18 +57,33 @@ jobs:
         cd R1XiaozhiApp
         ./gradlew assembleRelease --stacktrace
         
-    # --- 新增：使用 GitHub Actions 插件进行签名 ---
-    - name: Sign Release APK
-      uses: r0adkll/sign-android-release@v1
-      id: sign_app
-      with:
-        releaseDirectory: R1XiaozhiApp/app/build/outputs/apk/release
-        signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-        alias: ${{ secrets.KEY_ALIAS }}
-        keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-        keyPassword: ${{ secrets.KEY_PASSWORD }}
-        # 👇 新增这一行，指定一个存在的 build-tools 版本
-        buildToolsVersion: '34.0.0'
+    # --- 终极替换方案：使用原生脚本进行 Zipalign 和 签名 ---
+    - name: Sign Release APK manually
+      run: |
+        cd R1XiaozhiApp/app/build/outputs/apk/release
+        
+        # 1. 从 Secrets 还原 Keystore 文件
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > my-release-key.jks
+        
+        # 2. 自动寻找系统中最新版本的 build-tools 目录
+        BUILD_TOOLS_DIR=$(ls -1d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
+        echo "Using build tools from: $BUILD_TOOLS_DIR"
+        
+        # 3. 执行 Zipalign (优化 APK，签名必备前置步骤)
+        $BUILD_TOOLS_DIR/zipalign -v -p 4 app-release-unsigned.apk app-release-aligned.apk
+        
+        # 4. 执行 Apksigner (正式签名)
+        $BUILD_TOOLS_DIR/apksigner sign --ks my-release-key.jks \
+          --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+          --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+          --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+          --out app-release-signed.apk \
+          app-release-aligned.apk
+          
+        # 5. 清理临时文件，并将签好名的包重命名为原名，方便后续步骤处理
+        rm my-release-key.jks
+        rm app-release-aligned.apk
+        mv app-release-signed.apk app-release-unsigned.apk
         
     - name: Get version info
       id: version
