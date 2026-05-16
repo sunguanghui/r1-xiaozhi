@@ -67,6 +67,8 @@ jobs:
         alias: ${{ secrets.KEY_ALIAS }}
         keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
         keyPassword: ${{ secrets.KEY_PASSWORD }}
+        # 👇 新增这一行，指定一个存在的 build-tools 版本
+        buildToolsVersion: '34.0.0'
         
     - name: Get version info
       id: version
