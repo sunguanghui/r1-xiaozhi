@@ -8,9 +8,9 @@ import android.provider.Settings;
 import android.util.Log;
 
 /**
- * Generator mã pairing theo chuẩn xiaozhi-esp32
- * Pairing code = 6 ký tự cuối của Device ID (MAC address)
- * KHÔNG có API call - gen LOCAL hoàn toàn
+ * Pairing code generator following the xiaozhi-esp32 standard
+ * Pairing code = last 6 characters of Device ID (MAC address)
+ * NO API call — generated entirely LOCAL
  */
 public class PairingCodeGenerator {
     
@@ -20,8 +20,8 @@ public class PairingCodeGenerator {
     private static final String KEY_PAIRED = "paired";
     
     /**
-     * Lấy Device ID (MAC address without colons)
-     * Cached để consistent across reboots
+     * Get Device ID (MAC address without colons)
+     * Cached for consistency across reboots
      */
     public static String getDeviceId(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -37,7 +37,7 @@ public class PairingCodeGenerator {
     }
     
     /**
-     * Generate Device ID từ WiFi MAC address
+     * Generate Device ID from WiFi MAC address
      */
     private static String generateDeviceId(Context context) {
         try {
@@ -86,9 +86,9 @@ public class PairingCodeGenerator {
     }
     
     /**
-     * Lấy pairing code = 6 ký tự cuối của Device ID
-     * Theo ESP32: deviceId.substring(deviceId.length() - 6)
-     * FORCE uppercase để đảm bảo match với server
+     * Get pairing code = last 6 characters of Device ID
+     * Per ESP32: deviceId.substring(deviceId.length() - 6)
+     * FORCE uppercase to ensure match with server
      */
     public static String getPairingCode(Context context) {
         String deviceId = getDeviceId(context);
@@ -101,7 +101,7 @@ public class PairingCodeGenerator {
     }
     
     /**
-     * Format code để hiển thị: DDEEFF -> DD EE FF
+     * Format code for display: DDEEFF -> DD EE FF
      */
     public static String formatPairingCode(String code) {
         if (code == null || code.length() != 6) {
@@ -119,7 +119,7 @@ public class PairingCodeGenerator {
     }
     
     /**
-     * Mark as paired (gọi sau khi nhận Authorize response success)
+     * Mark as paired (called after receiving a successful Authorize response)
      */
     public static void markAsPaired(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);

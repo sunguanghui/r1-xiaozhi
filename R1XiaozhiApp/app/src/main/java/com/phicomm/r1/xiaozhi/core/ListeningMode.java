@@ -1,28 +1,28 @@
 package com.phicomm.r1.xiaozhi.core;
 
 /**
- * Listening modes từ py-xiaozhi
- * Định nghĩa các chế độ lắng nghe khác nhau
+ * Listening modes from py-xiaozhi
+ * Defines the different listening modes
  */
 public enum ListeningMode {
     /**
      * MANUAL: Push-to-talk mode
-     * Người dùng giữ nút để nói, thả nút để dừng
-     * Use case: Phát ngôn viên, presentation
+     * User holds button to speak, releases to stop
+     * Use case: Presenter, public speaking
      */
     MANUAL("manual"),
-    
+
     /**
-     * AUTO_STOP: Tự động dừng khi phát hiện silence
-     * Phù hợp cho cuộc hội thoại thông thường
+     * AUTO_STOP: Automatically stops when silence is detected
+     * Suitable for normal conversation
      * Use case: Normal conversation
      */
     AUTO_STOP("auto_stop"),
-    
+
     /**
-     * REALTIME: Continuous listening với AEC (Acoustic Echo Cancellation)
-     * Luôn lắng nghe, thậm chí khi đang phát TTS
-     * Yêu cầu: Hardware hỗ trợ AEC
+     * REALTIME: Continuous listening with AEC (Acoustic Echo Cancellation)
+     * Always listening, even during TTS playback
+     * Requires: Hardware with AEC support
      * Use case: Always-on voice assistant
      */
     REALTIME("realtime");
@@ -34,14 +34,14 @@ public enum ListeningMode {
     }
     
     /**
-     * Get giá trị string của mode
+     * Get the string value of the mode
      */
     public String getValue() {
         return value;
     }
     
     /**
-     * Convert từ string sang ListeningMode
+     * Convert from string to ListeningMode
      */
     public static ListeningMode fromString(String value) {
         if (value == null) {

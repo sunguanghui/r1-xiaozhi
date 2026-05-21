@@ -11,7 +11,7 @@ import com.phicomm.r1.xiaozhi.service.XiaozhiConnectionService;
 import com.phicomm.r1.xiaozhi.service.LEDControlService;
 
 /**
- * Receiver để tự động khởi động các service khi R1 boot
+ * Receiver to auto-start services when R1 boots
  */
 public class BootReceiver extends BroadcastReceiver {
     
@@ -26,7 +26,7 @@ public class BootReceiver extends BroadcastReceiver {
             
             XiaozhiConfig config = new XiaozhiConfig(context);
             
-            // Chỉ tự động start nếu user đã enable
+            // Only auto-start if user has enabled the option
             if (config.isAutoStart()) {
                 // Start LED service first
                 Intent ledIntent = new Intent(context, LEDControlService.class);

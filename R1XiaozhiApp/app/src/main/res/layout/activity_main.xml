@@ -32,7 +32,7 @@
         android:id="@+id/copyButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Sao Chep Ma"
+        android:text="Copy Code"
         android:layout_gravity="center"
         android:layout_marginBottom="20dp"/>
 
@@ -40,7 +40,7 @@
         android:id="@+id/instructionsText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Hướng dẫn kết nối:\n1. Bấm nút 'Connect' để bắt đầu\n2. Nhập mã vào trang web\n3. Đợi kích hoạt hoàn tất"
+        android:text="Connection instructions:\n1. Tap 'Connect' to begin\n2. Enter the code on the website\n3. Wait for activation to complete"
         android:textSize="14sp"
         android:gravity="center"
         android:layout_marginBottom="15dp"/>
@@ -50,7 +50,7 @@
         android:id="@+id/activationCodeText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Mã kích hoạt: ------"
+        android:text="Activation code: ------"
         android:textSize="20sp"
         android:textColor="#FF5722"
         android:textStyle="bold"
@@ -65,7 +65,7 @@
         android:id="@+id/activationProgressText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Đang kiểm tra kích hoạt..."
+        android:text="Checking activation status..."
         android:textSize="14sp"
         android:textColor="#FF9800"
         android:gravity="center"
@@ -86,7 +86,7 @@
         android:id="@+id/stateText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Trang thai: San sang"
+        android:text="State: Ready"
         android:textSize="16sp"
         android:textColor="#2196F3"
         android:gravity="center"
@@ -128,7 +128,7 @@
         android:id="@+id/cancelActivationButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hủy Kích Hoạt"
+        android:text="Cancel Activation"
         android:layout_gravity="center"
         android:layout_marginTop="10dp"
         android:visibility="gone"/>

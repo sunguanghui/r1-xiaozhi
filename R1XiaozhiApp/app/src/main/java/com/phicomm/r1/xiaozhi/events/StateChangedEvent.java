@@ -3,8 +3,8 @@ package com.phicomm.r1.xiaozhi.events;
 import com.phicomm.r1.xiaozhi.core.DeviceState;
 
 /**
- * Event được broadcast khi device state thay đổi
- * Theo mô hình py-xiaozhi event system
+ * Event broadcast when the device state changes
+ * Follows the py-xiaozhi event system model
  */
 public class StateChangedEvent {
     public final DeviceState oldState;

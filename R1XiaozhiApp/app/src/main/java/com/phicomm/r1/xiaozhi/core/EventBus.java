@@ -10,15 +10,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Event broadcasting system theo mô hình py-xiaozhi
- * Thread-safe và post events trên main thread
- * 
+ * Event broadcasting system following the py-xiaozhi model
+ * Thread-safe, posts events on the main thread
+ *
  * Usage:
  * // Register listener
  * eventBus.register(StateChangedEvent.class, event -> {
  *     // Handle event on main thread
  * });
- * 
+ *
  * // Post event
  * eventBus.post(new StateChangedEvent(oldState, newState));
  */
@@ -30,11 +30,11 @@ public class EventBus {
     private final Map<Class<?>, List<EventListener<?>>> listeners = new ConcurrentHashMap<>();
     
     /**
-     * Register một listener cho event type cụ thể
-     * Thread-safe: có thể gọi từ bất kỳ thread nào
-     * 
-     * @param eventType Class của event (vd: StateChangedEvent.class)
-     * @param listener Listener sẽ được gọi khi event được post
+     * Register a listener for a specific event type
+     * Thread-safe: can be called from any thread
+     *
+     * @param eventType Event class (e.g., StateChangedEvent.class)
+     * @param listener Listener to be invoked when the event is posted
      */
     public <T> void register(Class<T> eventType, EventListener<T> listener) {
         List<EventListener<?>> eventListeners = listeners.get(eventType);
@@ -48,11 +48,11 @@ public class EventBus {
     }
     
     /**
-     * Unregister một listener
-     * Thread-safe: có thể gọi từ bất kỳ thread nào
-     * 
-     * @param eventType Class của event
-     * @param listener Listener cần unregister
+     * Unregister a listener
+     * Thread-safe: can be called from any thread
+     *
+     * @param eventType Event class
+     * @param listener Listener to unregister
      */
     public <T> void unregister(Class<T> eventType, EventListener<T> listener) {
         List<EventListener<?>> eventListeners = listeners.get(eventType);
@@ -64,10 +64,10 @@ public class EventBus {
     }
     
     /**
-     * Post event tới tất cả listeners (trên main thread)
-     * Thread-safe: có thể gọi từ bất kỳ thread nào
-     * 
-     * @param event Event object cần broadcast
+     * Post an event to all listeners (on the main thread)
+     * Thread-safe: can be called from any thread
+     *
+     * @param event Event object to broadcast
      */
     public <T> void post(final T event) {
         if (event == null) {
@@ -86,7 +86,7 @@ public class EventBus {
         Log.d(TAG, "Broadcasting " + eventType.getSimpleName() + " to " + 
               eventListeners.size() + " listeners");
         
-        // Post tất cả listeners trên main thread
+        // Post all listeners on the main thread
         for (final EventListener listener : eventListeners) {
             mainHandler.post(new Runnable() {
                 @Override
@@ -103,10 +103,10 @@ public class EventBus {
     }
     
     /**
-     * Post event ngay lập tức (trên current thread)
-     * CẢNH BÁO: Chỉ dùng nếu chắc chắn đang ở main thread
-     * 
-     * @param event Event object cần broadcast
+     * Post an event immediately (on the current thread)
+     * WARNING: Only use this if certain you are on the main thread
+     *
+     * @param event Event object to broadcast
      */
     public <T> void postSync(final T event) {
         if (event == null) {
@@ -135,8 +135,8 @@ public class EventBus {
     }
     
     /**
-     * Clear tất cả listeners
-     * Thường được gọi khi shutdown app
+     * Clear all listeners
+     * Typically called on application shutdown
      */
     public void clear() {
         int totalListeners = 0;
@@ -148,7 +148,7 @@ public class EventBus {
     }
     
     /**
-     * Get số lượng listeners cho một event type
+     * Get the number of listeners for a given event type
      */
     public <T> int getListenerCount(Class<T> eventType) {
         List<EventListener<?>> eventListeners = listeners.get(eventType);
@@ -162,9 +162,9 @@ public class EventBus {
      */
     public interface EventListener<T> {
         /**
-         * Được gọi khi event được post
-         * LUÔN được gọi trên main thread (UI thread)
-         * 
+         * Called when an event is posted
+         * ALWAYS invoked on the main thread (UI thread)
+         *
          * @param event Event object
          */
         void onEvent(T event);

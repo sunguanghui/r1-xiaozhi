@@ -1,8 +1,8 @@
 package com.phicomm.r1.xiaozhi.util;
 
 /**
- * Xiaozhi Error Codes và Vietnamese messages
- * Học từ py-xiaozhi và android-client implementations
+ * Xiaozhi Error Codes and error messages
+ * Based on py-xiaozhi and android-client implementations
  */
 public class ErrorCodes {
     
@@ -35,56 +35,56 @@ public class ErrorCodes {
     public static final int RATE_LIMIT_EXCEEDED = 9002;
     
     /**
-     * Get Vietnamese error message for error code
+     * Get error message for error code
      */
     public static String getMessage(int code) {
         switch (code) {
             // Pairing & Auth
             case INVALID_PAIRING_CODE:
-                return "Mã ghép nối không hợp lệ. Vui lòng kiểm tra lại.";
+                return "Invalid pairing code. Please check and try again.";
             case DEVICE_NOT_REGISTERED:
-                return "Thiết bị chưa được đăng ký. Vui lòng ghép nối lại.";
+                return "Device not registered. Please pair again.";
             case AUTHORIZATION_FAILED:
-                return "Xác thực thất bại. Vui lòng thử lại.";
+                return "Authorization failed. Please try again.";
             case TOKEN_EXPIRED:
-                return "Phiên đăng nhập đã hết hạn. Vui lòng ghép nối lại.";
-            
+                return "Session expired. Please pair again.";
+
             // Network
             case NETWORK_ERROR:
-                return "Lỗi mạng. Vui lòng kiểm tra kết nối internet.";
+                return "Network error. Please check your internet connection.";
             case CONNECTION_TIMEOUT:
-                return "Kết nối bị timeout. Vui lòng thử lại.";
+                return "Connection timed out. Please try again.";
             case WEBSOCKET_ERROR:
-                return "Lỗi WebSocket. Đang thử kết nối lại...";
+                return "WebSocket error. Attempting to reconnect...";
             case SERVER_UNAVAILABLE:
-                return "Server không khả dụng. Vui lòng thử lại sau.";
-            
+                return "Server unavailable. Please try again later.";
+
             // Audio
             case AUDIO_PROCESSING_ERROR:
-                return "Lỗi xử lý âm thanh. Vui lòng thử lại.";
+                return "Audio processing error. Please try again.";
             case TTS_GENERATION_FAILED:
-                return "Lỗi tạo giọng nói. Vui lòng thử lại.";
+                return "TTS generation failed. Please try again.";
             case VOICE_RECOGNITION_FAILED:
-                return "Không nhận diện được giọng nói. Vui lòng nói rõ hơn.";
+                return "Voice not recognized. Please speak more clearly.";
             case AUDIO_PLAYBACK_ERROR:
-                return "Lỗi phát âm thanh. Vui lòng kiểm tra loa.";
-            
+                return "Audio playback error. Please check your speaker.";
+
             // Agent
             case AGENT_NOT_FOUND:
-                return "Không tìm thấy agent. Vui lòng chọn agent khác.";
+                return "Agent not found. Please select a different agent.";
             case AGENT_UNAVAILABLE:
-                return "Agent không khả dụng. Vui lòng thử lại sau.";
+                return "Agent unavailable. Please try again later.";
             case AGENT_ERROR:
-                return "Lỗi agent. Vui lòng liên hệ hỗ trợ.";
-            
+                return "Agent error. Please contact support.";
+
             // General
             case RATE_LIMIT_EXCEEDED:
-                return "Quá nhiều request. Vui lòng đợi một chút.";
+                return "Too many requests. Please wait a moment.";
             case INVALID_MESSAGE_FORMAT:
-                return "Định dạng tin nhắn không hợp lệ.";
+                return "Invalid message format.";
             case UNKNOWN_ERROR:
             default:
-                return "Lỗi không xác định (Code: " + code + ")";
+                return "Unknown error (Code: " + code + ")";
         }
     }
     

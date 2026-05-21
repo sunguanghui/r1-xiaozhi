@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp /d/Project/r1-xiaozhi/*.md /d/Project/r1-xiaozhi/docs/)",
+      "Bash(cp /d/Project/r1-xiaozhi/*.txt /d/Project/r1-xiaozhi/docs/)"
+    ]
+  }
+}

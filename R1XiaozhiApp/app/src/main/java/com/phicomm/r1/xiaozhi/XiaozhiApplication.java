@@ -7,7 +7,7 @@ import android.util.Log;
 import com.phicomm.r1.xiaozhi.core.XiaozhiCore;
 
 /**
- * Application class - Khởi tạo XiaozhiCore và global configurations
+ * Application class - Initializes XiaozhiCore and global configurations
  * Extends MultiDexApplication for API 21+ multidex support
  */
 public class XiaozhiApplication extends Application {
@@ -30,7 +30,7 @@ public class XiaozhiApplication extends Application {
         Log.i(TAG, "Package: " + getPackageName());
         Log.i(TAG, "===========================================");
 
-        // Initialize XiaozhiCore với application context
+        // Initialize XiaozhiCore with application context
         XiaozhiCore core = XiaozhiCore.getInstance();
         core.initialize(this);
 
@@ -41,7 +41,7 @@ public class XiaozhiApplication extends Application {
     
     @Override
     public void onTerminate() {
-        // Cleanup XiaozhiCore khi app terminate
+        // Cleanup XiaozhiCore when the app terminates
         Log.i(TAG, "Application terminating...");
         XiaozhiCore.getInstance().shutdown();
         super.onTerminate();

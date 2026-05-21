@@ -12,8 +12,8 @@ import com.phicomm.r1.xiaozhi.config.XiaozhiConfig;
 import com.phicomm.r1.xiaozhi.hardware.LedLight;
 
 /**
- * Service điều khiển LED strip của Phicomm R1
- * Hiển thị trạng thái hoạt động qua màu sắc và animation
+ * Service for controlling the LED strip of the Phicomm R1
+ * Displays operating status via color and animation
  *
  * REFACTORED: Now uses native JNI library (libledLight-jni.so) instead of shell commands
  * Based on r1-helper implementation - 10x faster and more reliable
@@ -194,37 +194,37 @@ public class LEDControlService extends Service {
     }
     
     /**
-     * Idle state - màu xanh dương nhạt
+     * Idle state - light blue
      */
     public void setIdleState() {
         stopAnimation();
         currentState = STATE_IDLE;
-        setLEDColor(0x0066CC); // Xanh dương nhạt
+        setLEDColor(0x0066CC); // Light blue
         Log.d(TAG, "State: IDLE");
     }
     
     /**
-     * Listening state - xoay tròn màu xanh lá
+     * Listening state - rotating green
      */
     public void setListeningState() {
         stopAnimation();
         currentState = STATE_LISTENING;
-        startRotatingAnimation(0x00FF00, 50); // Xanh lá
+        startRotatingAnimation(0x00FF00, 50); // Green
         Log.d(TAG, "State: LISTENING");
     }
     
     /**
-     * Thinking state - pulse màu trắng
+     * Thinking state - white pulse
      */
     public void setThinkingState() {
         stopAnimation();
         currentState = STATE_THINKING;
-        startPulseAnimation(0xFFFFFF, 200); // Trắng
+        startPulseAnimation(0xFFFFFF, 200); // White
         Log.d(TAG, "State: THINKING");
     }
     
     /**
-     * Speaking state - màu xanh cyan
+     * Speaking state - cyan
      */
     public void setSpeakingState() {
         stopAnimation();
@@ -234,17 +234,17 @@ public class LEDControlService extends Service {
     }
     
     /**
-     * Error state - nhấp nháy đỏ
+     * Error state - red blink
      */
     public void setErrorState() {
         stopAnimation();
         currentState = STATE_ERROR;
-        startBlinkAnimation(0xFF0000, 300); // Đỏ
+        startBlinkAnimation(0xFF0000, 300); // Red
         Log.d(TAG, "State: ERROR");
     }
     
     /**
-     * Animation: Rotating colors (cho listening)
+     * Animation: Rotating colors (for listening)
      */
     private void startRotatingAnimation(final int baseColor, final int delayMs) {
         isAnimating = true;
@@ -272,7 +272,7 @@ public class LEDControlService extends Service {
     }
     
     /**
-     * Animation: Pulse (cho thinking)
+     * Animation: Pulse (for thinking)
      */
     private void startPulseAnimation(final int color, final int delayMs) {
         isAnimating = true;
@@ -312,7 +312,7 @@ public class LEDControlService extends Service {
     }
     
     /**
-     * Animation: Blink (cho error)
+     * Animation: Blink (for error)
      */
     private void startBlinkAnimation(final int color, final int delayMs) {
         isAnimating = true;

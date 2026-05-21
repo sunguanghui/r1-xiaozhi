@@ -21,8 +21,8 @@ import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 
 /**
- * Service thu âm và phát hiện wake word liên tục
- * Khi phát hiện wake word, bắt đầu ghi âm đầy đủ và gửi đến Xiaozhi
+ * Service for continuous audio recording and wake word detection
+ * When a wake word is detected, starts full recording and sends audio to Xiaozhi
  *
  * FIX: Added permission checks to prevent SecurityException crash
  */
@@ -93,7 +93,7 @@ public class VoiceRecognitionService extends Service {
             Log.e(TAG, "Service will run but recording is disabled.");
 
             if (callback != null) {
-                callback.onError("Khong co quyen ghi am");
+                callback.onError("No microphone permission");
             }
         }
 
@@ -122,30 +122,30 @@ public class VoiceRecognitionService extends Service {
     }
     
     /**
-     * Tạo notification channel cho Android O+
-     * Không cần cho API 22
+     * Create notification channel for Android O+
+     * Not required for API 22
      */
     private void createNotificationChannel() {
-        // NotificationChannel chỉ có từ API 26+
-        // API 22 không cần tạo channel
+        // NotificationChannel is only available from API 26+
+        // Not needed for API 22
     }
     
     /**
-     * Tạo notification cho foreground service
+     * Create notification for foreground service
      */
     private Notification createNotification() {
-        // API 22 chỉ cần Builder đơn giản
+        // API 22 only needs a simple Builder
         Notification.Builder builder = new Notification.Builder(this);
         
         return builder
             .setContentTitle("Xiaozhi Voice Assistant")
-            .setContentText("Đang lắng nghe: " + config.getWakeWord())
+            .setContentText("Listening: " + config.getWakeWord())
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .build();
     }
     
     /**
-     * Bắt đầu thu âm liên tục
+     * Start continuous audio recording
      * FIX #2: Enhanced error handling and permission checks
      */
     private void startRecording() {
@@ -158,7 +158,7 @@ public class VoiceRecognitionService extends Service {
         if (!checkRecordAudioPermission()) {
             Log.e(TAG, "Cannot start recording: No RECORD_AUDIO permission");
             if (callback != null) {
-                callback.onError("Khong co quyen ghi am");
+                callback.onError("No microphone permission");
             }
             return;
         }
@@ -188,7 +188,7 @@ public class VoiceRecognitionService extends Service {
                 Log.e(TAG, "Expected: " + AudioRecord.STATE_INITIALIZED);
 
                 if (callback != null) {
-                    callback.onError("Khong the khoi tao microphone");
+                    callback.onError("Cannot initialize microphone");
                 }
 
                 // Clean up
@@ -212,7 +212,7 @@ public class VoiceRecognitionService extends Service {
             Log.e(TAG, "No RECORD_AUDIO permission!");
 
             if (callback != null) {
-                callback.onError("Khong co quyen ghi am");
+                callback.onError("No microphone permission");
             }
 
         } catch (IllegalArgumentException e) {
@@ -220,20 +220,20 @@ public class VoiceRecognitionService extends Service {
             Log.e(TAG, "Invalid AudioRecord parameters!");
 
             if (callback != null) {
-                callback.onError("Cau hinh microphone khong hop le");
+                callback.onError("Invalid microphone configuration");
             }
 
         } catch (Exception e) {
             Log.e(TAG, "=== UNEXPECTED EXCEPTION ===", e);
 
             if (callback != null) {
-                callback.onError("Loi khong xac dinh: " + e.getMessage());
+                callback.onError("Unknown error: " + e.getMessage());
             }
         }
     }
     
     /**
-     * Recording loop - chạy trong background thread
+     * Recording loop - runs in background thread
      */
     private class RecordingRunnable implements Runnable {
         @Override
@@ -260,31 +260,31 @@ public class VoiceRecognitionService extends Service {
     }
     
     /**
-     * Xử lý audio buffer
+     * Process audio buffer
      */
     private void processAudioBuffer(short[] buffer, int length) {
         if (isListeningForWakeWord) {
-            // Mode 1: Phát hiện wake word
+            // Mode 1: Detect wake word
             boolean wakeWordDetected = detectWakeWord(buffer, length);
             
             if (wakeWordDetected) {
                 onWakeWordDetected();
             }
         } else if (isRecordingCommand) {
-            // Mode 2: Ghi âm command sau khi phát hiện wake word
+            // Mode 2: Record command audio after wake word detection
             recordCommandAudio(buffer, length);
         }
     }
     
     /**
-     * Phát hiện wake word đơn giản dựa trên energy và pattern
-     * TODO: Tích hợp thư viện wake word detection chuyên dụng như Porcupine
+     * Simple wake word detection based on energy and pattern
+     * TODO: Integrate a dedicated wake word detection library such as Porcupine
      */
     private boolean detectWakeWord(short[] buffer, int length) {
         double energy = calculateEnergy(buffer, length);
-        
+
         // Simple energy-based detection
-        // Trong production nên dùng model ML như Porcupine, Snowboy
+        // In production, use an ML model such as Porcupine or Snowboy
         if (energy > ENERGY_THRESHOLD * 3) {
             Log.d(TAG, "High energy detected, possible wake word: " + energy);
             return true;
@@ -294,7 +294,7 @@ public class VoiceRecognitionService extends Service {
     }
     
     /**
-     * Tính năng lượng audio để phát hiện voice activity
+     * Calculate audio energy for voice activity detection
      */
     private double calculateEnergy(short[] buffer, int length) {
         double sum = 0;
@@ -305,7 +305,7 @@ public class VoiceRecognitionService extends Service {
     }
     
     /**
-     * Xử lý khi phát hiện wake word
+     * Handle wake word detection event
      */
     private void onWakeWordDetected() {
         Log.d(TAG, "Wake word detected!");
@@ -354,7 +354,7 @@ public class VoiceRecognitionService extends Service {
             return;
         }
 
-        // Phát hiện kết thúc câu lệnh (silence detection)
+        // Detect end of command (silence detection)
         if (energy < ENERGY_THRESHOLD) {
             silenceCounter++;
 
@@ -431,7 +431,7 @@ public class VoiceRecognitionService extends Service {
             callback.onRecordingCompleted(audioData);
         }
 
-        // Gửi audio đến XiaozhiConnectionService
+        // Send audio to XiaozhiConnectionService
         Intent intent = new Intent(this, XiaozhiConnectionService.class);
         intent.setAction("SEND_AUDIO");
         intent.putExtra("audio_data", audioData);
@@ -446,7 +446,7 @@ public class VoiceRecognitionService extends Service {
     }
     
     /**
-     * Dừng thu âm
+     * Stop recording
      */
     public void stopRecording() {
         isRecording = false;

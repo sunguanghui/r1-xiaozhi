@@ -3,7 +3,7 @@ package com.phicomm.r1.xiaozhi.events;
 import org.json.JSONObject;
 
 /**
- * Event được broadcast khi nhận được JSON message từ server
+ * Event broadcast when a JSON message is received from the server
  */
 public class MessageReceivedEvent {
     public final JSONObject message;

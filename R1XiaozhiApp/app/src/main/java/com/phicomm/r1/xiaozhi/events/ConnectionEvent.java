@@ -1,8 +1,8 @@
 package com.phicomm.r1.xiaozhi.events;
 
 /**
- * Event được broadcast khi connection status thay đổi
- * Bao gồm cả pairing success/failure
+ * Event broadcast when connection status changes
+ * Includes pairing success/failure
  */
 public class ConnectionEvent {
     public final boolean connected;

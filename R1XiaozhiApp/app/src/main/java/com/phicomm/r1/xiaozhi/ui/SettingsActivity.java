@@ -7,7 +7,7 @@ import android.widget.TextView;
 import com.phicomm.r1.xiaozhi.R;
 
 /**
- * Settings Activity - Cấu hình ứng dụng
+ * Settings Activity - Application configuration
  * TODO: Implement full settings UI
  */
 public class SettingsActivity extends Activity {
@@ -16,7 +16,7 @@ public class SettingsActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Tạo UI đơn giản
+        // Create simple UI
         TextView textView = new TextView(this);
         textView.setText("Settings\n\nTODO: Implement settings UI");
         textView.setPadding(50, 50, 50, 50);

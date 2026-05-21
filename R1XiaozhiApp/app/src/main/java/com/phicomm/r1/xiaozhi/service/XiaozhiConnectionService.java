@@ -40,14 +40,14 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
 /**
- * Service quản lý kết nối WebSocket với Xiaozhi Cloud
+ * Service managing the WebSocket connection with Xiaozhi Cloud
  *
- * UPDATED: Sử dụng py-xiaozhi authentication method
- * - Token-based authentication (Bearer token trong WebSocket header)
- * - Device activation flow với HMAC challenge-response
- * - Hello message thay vì Authorize handshake
+ * UPDATED: Uses py-xiaozhi authentication method
+ * - Token-based authentication (Bearer token in WebSocket header)
+ * - Device activation flow with HMAC challenge-response
+ * - Hello message instead of Authorize handshake
  *
- * Refactored để sử dụng XiaozhiCore và EventBus
+ * Refactored to use XiaozhiCore and EventBus
  */
 public class XiaozhiConnectionService extends Service {
 
@@ -60,7 +60,7 @@ public class XiaozhiConnectionService extends Service {
     private final IBinder binder = new LocalBinder();
     private ConnectionListener connectionListener;
     
-    // XiaozhiCore và EventBus
+    // XiaozhiCore and EventBus
     private XiaozhiCore core;
     private EventBus eventBus;
     
@@ -177,7 +177,7 @@ public class XiaozhiConnectionService extends Service {
             }
         });
 
-        // Register this service với core
+        // Register this service with core
         core.setConnectionService(this);
 
         Log.i(TAG, "Service created and registered with XiaozhiCore");
@@ -240,7 +240,7 @@ public class XiaozhiConnectionService extends Service {
     
     /**
      * Connect to Xiaozhi Cloud
-     * Sử dụng py-xiaozhi method:
+     * Uses py-xiaozhi method:
      * 1. Check if device is activated
      * 2. If not activated -> start activation flow
      * 3. If activated -> connect with token
@@ -285,7 +285,7 @@ public class XiaozhiConnectionService extends Service {
     
     /**
      * Connect to WebSocket with Bearer token
-     * py-xiaozhi method: Token trong WebSocket header
+     * py-xiaozhi method: Token in WebSocket header
      */
     private void connectWithToken(final String accessToken) {
         if (webSocketClient != null && webSocketClient.isOpen()) {
@@ -509,7 +509,7 @@ public class XiaozhiConnectionService extends Service {
     }
     
     /**
-     * Handle message từ server
+     * Handle message from server
      */
     private void handleMessage(String message) {
         try {
@@ -533,7 +533,7 @@ public class XiaozhiConnectionService extends Service {
     }
     
     /**
-     * Handle TTS messages theo logic py-xiaozhi
+     * Handle TTS messages following py-xiaozhi logic
      */
     private void handleTTSMessage(JSONObject json) {
         try {
@@ -552,7 +552,7 @@ public class XiaozhiConnectionService extends Service {
                 if (core.isKeepListening()) {
                     // Resume listening
                     core.setDeviceState(DeviceState.LISTENING);
-                    // Restart listening theo py-xiaozhi logic
+                    // Resume listening per py-xiaozhi logic
                     sendStartListening(core.getListeningMode());
                 } else {
                     core.setDeviceState(DeviceState.IDLE);
@@ -566,7 +566,7 @@ public class XiaozhiConnectionService extends Service {
     
     
     /**
-     * Send start listening message theo py-xiaozhi
+     * Send start listening message following py-xiaozhi
      */
     public void sendStartListening(ListeningMode mode) {
         if (webSocketClient == null || !webSocketClient.isOpen()) {
@@ -661,7 +661,7 @@ public class XiaozhiConnectionService extends Service {
     }
     
     /**
-     * Send text message (sau khi paired)
+     * Send text message (after pairing)
      */
     public void sendTextMessage(String text) {
         if (webSocketClient == null || !webSocketClient.isOpen()) {
@@ -756,7 +756,7 @@ public class XiaozhiConnectionService extends Service {
     }
     
     /**
-     * Schedule reconnect với exponential backoff
+     * Schedule reconnect with exponential backoff
      */
     private void scheduleReconnect(final int errorCode) {
         if (retryCount >= MAX_RETRIES) {

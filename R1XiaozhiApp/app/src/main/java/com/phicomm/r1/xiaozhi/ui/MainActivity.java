@@ -33,8 +33,8 @@ import com.phicomm.r1.xiaozhi.service.XiaozhiConnectionService;
 import com.phicomm.r1.xiaozhi.util.PairingCodeGenerator;
 
 /**
- * MainActivity refactored để sử dụng XiaozhiCore và EventBus
- * - Event-driven architecture thay vì callbacks
+ * MainActivity refactored to use XiaozhiCore and EventBus
+ * - Event-driven architecture instead of callbacks
  * - Centralized state management
  * - Clean separation of concerns
  *
@@ -63,7 +63,7 @@ public class MainActivity extends Activity {
     private Button resetButton;
     private Button cancelActivationButton;
     
-    // Core và EventBus
+    // Core and EventBus
     private XiaozhiCore core;
     private EventBus eventBus;
     
@@ -105,7 +105,7 @@ public class MainActivity extends Activity {
         // Initialize views - API 22 requires explicit cast
         initializeViews();
 
-        // Get XiaozhiCore và EventBus
+        // Get XiaozhiCore and EventBus
         core = XiaozhiCore.getInstance();
         eventBus = core.getEventBus();
 
@@ -157,7 +157,7 @@ public class MainActivity extends Activity {
     }
     
     /**
-     * Setup service listener cho activation callbacks
+     * Setup service listener for activation callbacks
      */
     private void setupServiceListener() {
         if (xiaozhiService != null) {
@@ -167,7 +167,7 @@ public class MainActivity extends Activity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            updateStatus("WebSocket ket noi thanh cong");
+                            updateStatus("WebSocket connected successfully");
                         }
                     });
                 }
@@ -177,7 +177,7 @@ public class MainActivity extends Activity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            updateStatus("Ngat ket noi");
+                            updateStatus("Disconnected");
                             connectButton.setEnabled(true);
                         }
                     });
@@ -268,16 +268,16 @@ public class MainActivity extends Activity {
         Log.d(TAG, "State changed: " + event.oldState + " -> " + event.newState);
         
         // Update state display
-        String stateDisplay = "Trang thai: ";
+        String stateDisplay = "State: ";
         switch (event.newState) {
             case IDLE:
-                stateDisplay += "San sang";
+                stateDisplay += "Ready";
                 break;
             case LISTENING:
-                stateDisplay += "Dang nghe...";
+                stateDisplay += "Listening...";
                 break;
             case SPEAKING:
-                stateDisplay += "Dang noi...";
+                stateDisplay += "Speaking...";
                 break;
         }
         
@@ -289,8 +289,8 @@ public class MainActivity extends Activity {
     private void onConnectionEvent(ConnectionEvent event) {
         if (event.connected) {
             updateStatus("[OK] " + event.message);
-            Toast.makeText(this, "Ket noi thanh cong!", Toast.LENGTH_SHORT).show();
-            pairingCodeText.setText("Da Ghep Noi");
+            Toast.makeText(this, "Connected successfully!", Toast.LENGTH_SHORT).show();
+            pairingCodeText.setText("Paired");
             connectButton.setEnabled(false);
             if (instructionsText != null) {
                 instructionsText.setVisibility(View.GONE);
@@ -300,7 +300,7 @@ public class MainActivity extends Activity {
             }
         } else {
             updateStatus("[FAIL] " + event.message);
-            Toast.makeText(this, "Loi: " + event.message, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Error: " + event.message, Toast.LENGTH_SHORT).show();
             connectButton.setEnabled(true);
         }
     }
@@ -369,7 +369,7 @@ public class MainActivity extends Activity {
 
         // Show explanation to user
         Toast.makeText(this,
-            "App can ghi am de nhan dien giong noi. Vui long cap quyen!",
+            "App requires microphone permission for voice recognition. Please grant it!",
             Toast.LENGTH_LONG).show();
 
         // Request RECORD_AUDIO permission first (most critical)
@@ -407,7 +407,7 @@ public class MainActivity extends Activity {
             if (allGranted) {
                 Log.i(TAG, "=== ALL PERMISSIONS GRANTED ===");
                 permissionsGranted = true;
-                Toast.makeText(this, "[OK] Da cap quyen - Khoi dong dich vu...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "[OK] Permissions granted - starting services...", Toast.LENGTH_SHORT).show();
 
                 // Now safe to start services
                 initializeServices();
@@ -417,12 +417,12 @@ public class MainActivity extends Activity {
 
                 // Show error message
                 Toast.makeText(this,
-                    "[LOI] Khong co quyen ghi am! App se khong hoat dong.",
+                    "[ERROR] No microphone permission! App will not function.",
                     Toast.LENGTH_LONG).show();
 
                 // Update UI to show error state
-                updateStatus("[LOI] Khong co quyen ghi am");
-                pairingCodeText.setText("[LOI] Thieu Quyen");
+                updateStatus("[ERROR] No microphone permission");
+                pairingCodeText.setText("[ERROR] Missing Permission");
 
                 // Disable connect button
                 connectButton.setEnabled(false);
@@ -474,13 +474,13 @@ public class MainActivity extends Activity {
             // Device is activated - check connection status
             if (xiaozhiService.isConnected()) {
                 // Already connected
-                updateStatus("[OK] Da kich hoat va ket noi thanh cong");
-                pairingCodeText.setText("[OK] Da Ket Noi");
+                updateStatus("[OK] Activated and connected successfully");
+                pairingCodeText.setText("[OK] Connected");
                 Log.i(TAG, "Device activated and connected");
             } else {
                 // Activated but not connected - auto-connect
-                updateStatus("[OK] Da kich hoat - Dang ket noi...");
-                pairingCodeText.setText("[OK] Da Kich Hoat");
+                updateStatus("[OK] Activated - Connecting...");
+                pairingCodeText.setText("[OK] Activated");
 
                 Log.i(TAG, "=== AUTO-CONNECT ON RESTART ===");
                 Log.i(TAG, "Device is activated but not connected");
@@ -497,11 +497,11 @@ public class MainActivity extends Activity {
             connectButton.setEnabled(false);
             hideActivationUI();
         } else {
-            updateStatus("[!] Chua kich hoat - Bam 'Ket Noi' de bat dau");
-            pairingCodeText.setText("Chua kich hoat");
+            updateStatus("[!] Not activated - Tap 'Connect' to begin");
+            pairingCodeText.setText("Not activated");
             instructionsText.setVisibility(View.VISIBLE);
             if (instructionsText != null) {
-                instructionsText.setText("Bam nut 'Ket Noi' de bat dau kich hoat thiet bi");
+                instructionsText.setText("Tap 'Connect' to start device activation");
             }
             copyButton.setVisibility(View.GONE);
             connectButton.setEnabled(true);
@@ -513,21 +513,21 @@ public class MainActivity extends Activity {
      * Show activation code UI
      */
     private void showActivationCode(String verificationCode) {
-        updateStatus("Dang cho kich hoat...");
+        updateStatus("Waiting for activation...");
         
         if (activationCodeText != null) {
-            activationCodeText.setText("Ma kich hoat: " + verificationCode);
+            activationCodeText.setText("Activation code: " + verificationCode);
             activationCodeText.setVisibility(View.VISIBLE);
         } else {
             // Fallback to pairingCodeText
-            pairingCodeText.setText("Ma: " + verificationCode);
+            pairingCodeText.setText("Code: " + verificationCode);
         }
         
         if (instructionsText != null) {
             instructionsText.setText(
-                "Truy cap: https://xiaozhi.me/activate\n" +
-                "Nhap ma: " + verificationCode + "\n" +
-                "Hoac sao chep ma va dan vao trang web"
+                "Visit: https://xiaozhi.me/activate\n" +
+                "Enter code: " + verificationCode + "\n" +
+                "Or copy the code and paste it into the website"
             );
             instructionsText.setVisibility(View.VISIBLE);
         }
@@ -539,7 +539,7 @@ public class MainActivity extends Activity {
             cancelActivationButton.setVisibility(View.VISIBLE);
         }
         
-        Toast.makeText(this, "Nhap ma vao trang web: " + verificationCode, Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "Enter code on website: " + verificationCode, Toast.LENGTH_LONG).show();
         
         Log.i(TAG, "=== ACTIVATION CODE ===");
         Log.i(TAG, "Verification Code: " + verificationCode);
@@ -551,7 +551,7 @@ public class MainActivity extends Activity {
      * Update activation progress
      */
     private void updateActivationProgress(int attempt, int maxAttempts) {
-        String progress = "Dang kiem tra... (" + attempt + "/" + maxAttempts + ")";
+        String progress = "Checking... (" + attempt + "/" + maxAttempts + ")";
         
         if (activationProgressText != null) {
             activationProgressText.setText(progress);
@@ -580,9 +580,9 @@ public class MainActivity extends Activity {
      * Handle successful connection
      */
     private void onConnectionSuccess() {
-        updateStatus("[OK] Ket noi thanh cong!");
-        Toast.makeText(this, "Ket noi thanh cong!", Toast.LENGTH_SHORT).show();
-        pairingCodeText.setText("Da Ket Noi");
+        updateStatus("[OK] Connected successfully!");
+        Toast.makeText(this, "Connected successfully!", Toast.LENGTH_SHORT).show();
+        pairingCodeText.setText("Connected");
         connectButton.setEnabled(false);
         instructionsText.setVisibility(View.GONE);
         copyButton.setVisibility(View.GONE);
@@ -594,7 +594,7 @@ public class MainActivity extends Activity {
      */
     private void onConnectionFailed(String error) {
         updateStatus("[FAIL] " + error);
-        Toast.makeText(this, "Loi: " + error, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Error: " + error, Toast.LENGTH_SHORT).show();
         connectButton.setEnabled(true);
         hideActivationUI();
     }
@@ -613,7 +613,7 @@ public class MainActivity extends Activity {
         }
         
         if (code == null || code.isEmpty()) {
-            Toast.makeText(this, "Khong co ma de sao chep", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No code to copy", Toast.LENGTH_SHORT).show();
             return;
         }
         
@@ -621,7 +621,7 @@ public class MainActivity extends Activity {
         ClipData clip = ClipData.newPlainText("Xiaozhi Activation Code", code);
         clipboard.setPrimaryClip(clip);
         
-        Toast.makeText(this, "[OK] Da sao chep ma: " + code, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "[OK] Code copied: " + code, Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Activation code copied: " + code);
     }
     
@@ -630,11 +630,11 @@ public class MainActivity extends Activity {
      */
     private void connectToXiaozhi() {
         if (!xiaozhiBound) {
-            Toast.makeText(this, "Service chua san sang", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Service not ready", Toast.LENGTH_SHORT).show();
             return;
         }
         
-        updateStatus("Dang bat dau kich hoat...");
+        updateStatus("Starting activation...");
         connectButton.setEnabled(false);
         
         // Connect will check activation and start flow if needed
@@ -651,11 +651,11 @@ public class MainActivity extends Activity {
             xiaozhiService.cancelActivation();
         }
         
-        updateStatus("Da huy kich hoat");
+        updateStatus("Activation cancelled");
         connectButton.setEnabled(true);
         hideActivationUI();
-        
-        Toast.makeText(this, "Da huy kich hoat", Toast.LENGTH_SHORT).show();
+
+        Toast.makeText(this, "Activation cancelled", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Activation cancelled");
     }
     
@@ -672,7 +672,7 @@ public class MainActivity extends Activity {
         
         checkActivationStatus();
         
-        Toast.makeText(this, "Da reset - Vui long kich hoat lai", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Reset complete - please activate again", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Activation reset");
     }
     

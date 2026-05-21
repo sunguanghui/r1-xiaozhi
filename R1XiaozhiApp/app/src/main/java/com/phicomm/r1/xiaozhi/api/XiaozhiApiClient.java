@@ -14,10 +14,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * HTTP Client để tương tác với Xiaozhi API
+ * HTTP client for interacting with the Xiaozhi API
  * Endpoints:
- * - POST /api/device/register - Register device và nhận pairing code
- * - GET /api/device/status - Check pairing status và nhận token
+ * - POST /api/device/register - Register device and receive pairing code
+ * - GET /api/device/status - Check pairing status and receive token
  */
 public class XiaozhiApiClient {
     
@@ -26,11 +26,11 @@ public class XiaozhiApiClient {
     private static final int TIMEOUT = 10000; // 10 seconds
     
     /**
-     * Register device với Xiaozhi server và nhận pairing code
-     * 
+     * Register device with the Xiaozhi server and receive a pairing code
+     *
      * @param deviceId Device ID (MAC-based)
      * @param deviceType Device type (android, esp32, etc)
-     * @return PairingResponse với code từ server
+     * @return PairingResponse with code from server
      */
     public PairingResponse registerDevice(String deviceId, String deviceType) throws Exception {
         String endpoint = BASE_URL + "/device/register";
@@ -58,9 +58,9 @@ public class XiaozhiApiClient {
     
     /**
      * Check device pairing status
-     * 
+     *
      * @param deviceId Device ID
-     * @return DeviceStatus với status và token (nếu paired)
+     * @return DeviceStatus with status and token (if paired)
      */
     public DeviceStatus checkPairingStatus(String deviceId) throws Exception {
         String endpoint = BASE_URL + "/device/status?device_id=" + deviceId;

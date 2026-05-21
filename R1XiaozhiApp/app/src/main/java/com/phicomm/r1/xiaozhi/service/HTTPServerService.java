@@ -18,8 +18,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
- * HTTP Server đơn giản để expose pairing code qua REST API
- * Theo ESP32: Code gen LOCAL, không có async API calls
+ * Simple HTTP Server to expose the pairing code via REST API
+ * Per ESP32: Code generated LOCAL, no async API calls
  */
 public class HTTPServerService extends Service {
     
@@ -125,7 +125,7 @@ public class HTTPServerService extends Service {
     
     /**
      * GET /pairing-code
-     * Trả về pairing code LOCAL (không API call)
+     * Returns the LOCAL pairing code (no API call)
      */
     private void servePairingCode(PrintWriter writer) {
         try {
@@ -149,7 +149,7 @@ public class HTTPServerService extends Service {
     
     /**
      * GET /status
-     * Trả về trạng thái pairing
+     * Returns the pairing status
      */
     private void serveStatus(PrintWriter writer) {
         try {
@@ -172,7 +172,7 @@ public class HTTPServerService extends Service {
     
     /**
      * POST /reset
-     * Reset pairing status - đơn giản, KHÔNG có async
+     * Reset pairing status - simple, NO async
      */
     private void serveResetPairing(PrintWriter writer) {
         PairingCodeGenerator.resetPairing(this);

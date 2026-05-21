@@ -1,22 +1,22 @@
 package com.phicomm.r1.xiaozhi.core;
 
 /**
- * Device states từ py-xiaozhi
- * Định nghĩa 3 trạng thái chính của thiết bị
+ * Device states from py-xiaozhi
+ * Defines the 3 main states of the device
  */
 public enum DeviceState {
     /**
-     * Trạng thái chờ - không hoạt động
+     * Idle state - not active
      */
     IDLE("idle"),
-    
+
     /**
-     * Đang lắng nghe - thu âm và nhận diện giọng nói
+     * Listening - recording and recognizing voice input
      */
     LISTENING("listening"),
-    
+
     /**
-     * Đang nói - phát audio TTS
+     * Speaking - playing TTS audio
      */
     SPEAKING("speaking");
     
@@ -27,14 +27,14 @@ public enum DeviceState {
     }
     
     /**
-     * Get giá trị string của state
+     * Get the string value of the state
      */
     public String getValue() {
         return value;
     }
     
     /**
-     * Convert từ string sang DeviceState
+     * Convert from string to DeviceState
      */
     public static DeviceState fromString(String value) {
         if (value == null) {

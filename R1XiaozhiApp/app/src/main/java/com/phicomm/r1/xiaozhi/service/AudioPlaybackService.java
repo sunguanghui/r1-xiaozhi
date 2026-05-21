@@ -15,8 +15,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
- * Service phát audio từ Xiaozhi (TTS responses)
- * Hỗ trợ phát từ URL hoặc raw audio data
+ * Service for playing audio from Xiaozhi (TTS responses)
+ * Supports playback from URL or raw audio data
  */
 public class AudioPlaybackService extends Service implements 
     MediaPlayer.OnPreparedListener,
@@ -106,7 +106,7 @@ public class AudioPlaybackService extends Service implements
     }
     
     /**
-     * Khởi tạo MediaPlayer
+     * Initialize MediaPlayer
      */
     private void initMediaPlayer() {
         if (mediaPlayer != null) {
@@ -124,7 +124,7 @@ public class AudioPlaybackService extends Service implements
     }
     
     /**
-     * Phát audio từ URL
+     * Play audio from URL
      */
     public void playFromUrl(String url) {
         Log.d(TAG, "Playing from URL: " + url);
@@ -165,7 +165,7 @@ public class AudioPlaybackService extends Service implements
     }
     
     /**
-     * Phát audio từ raw data (PCM)
+     * Play audio from raw data (PCM)
      */
     public void playFromData(byte[] audioData) {
         Log.d(TAG, "Playing from data: " + audioData.length + " bytes");
@@ -192,7 +192,7 @@ public class AudioPlaybackService extends Service implements
     }
     
     /**
-     * Dừng phát
+     * Stop playback
      */
     public void stop() {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
@@ -203,7 +203,7 @@ public class AudioPlaybackService extends Service implements
     }
     
     /**
-     * Tạm dừng
+     * Pause playback
      */
     public void pause() {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
@@ -213,7 +213,7 @@ public class AudioPlaybackService extends Service implements
     }
     
     /**
-     * Tiếp tục phát
+     * Resume playback
      */
     public void resume() {
         if (mediaPlayer != null && isPrepared) {
@@ -255,7 +255,7 @@ public class AudioPlaybackService extends Service implements
     }
     
     /**
-     * Cleanup sau khi phát xong
+     * Cleanup after playback completes
      */
     private void onPlaybackCompleted() {
         isPrepared = false;

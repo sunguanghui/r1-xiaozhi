@@ -10,8 +10,8 @@ import com.phicomm.r1.xiaozhi.service.VoiceRecognitionService;
 import com.phicomm.r1.xiaozhi.service.XiaozhiConnectionService;
 
 /**
- * Core singleton theo mô hình py-xiaozhi Application class
- * Quản lý centralized state và coordination giữa các services
+ * Core singleton following the py-xiaozhi Application class model
+ * Manages centralized state and coordination between services
  * 
  * Thread-safe singleton với double-checked locking
  * 
@@ -31,13 +31,13 @@ public class XiaozhiCore {
     // Event bus
     private final EventBus eventBus;
     
-    // Device state (volatile cho visibility across threads)
+    // Device state (volatile for visibility across threads)
     private volatile DeviceState deviceState = DeviceState.IDLE;
     private volatile ListeningMode listeningMode = ListeningMode.AUTO_STOP;
     private volatile boolean keepListening = false;
     private volatile boolean aecEnabled = true;
-    
-    // Service references (được set bởi services khi bind)
+
+    // Service references (set by services when they bind)
     private XiaozhiConnectionService connectionService;
     private AudioPlaybackService audioService;
     private VoiceRecognitionService voiceService;
@@ -71,9 +71,9 @@ public class XiaozhiCore {
     }
     
     /**
-     * Initialize với application context
-     * Nên được gọi trong Application.onCreate()
-     * 
+     * Initialize with application context
+     * Should be called in Application.onCreate()
+     *
      * @param context Application context
      */
     public void initialize(Context context) {
@@ -88,7 +88,7 @@ public class XiaozhiCore {
     
     /**
      * Set device state (thread-safe)
-     * Broadcast StateChangedEvent nếu state thay đổi
+     * Broadcasts StateChangedEvent if state changes
      * 
      * @param newState New device state
      */
@@ -104,7 +104,7 @@ public class XiaozhiCore {
             
             Log.i(TAG, "State changed: " + oldState + " -> " + newState);
             
-            // Broadcast event (trên main thread)
+            // Broadcast event (on main thread)
             eventBus.post(new StateChangedEvent(oldState, newState));
         }
     }
@@ -169,8 +169,8 @@ public class XiaozhiCore {
     
     /**
      * Set keep listening flag
-     * Khi true: tự động tiếp tục listening sau khi TTS xong
-     * Khi false: về IDLE sau khi TTS xong
+     * When true: automatically continues listening after TTS completes
+     * When false: returns to IDLE after TTS completes
      * 
      * @param keepListening Keep listening flag
      */
@@ -182,7 +182,7 @@ public class XiaozhiCore {
     /**
      * Check if keep listening is enabled
      * 
-     * @return true nếu keep listening enabled
+     * @return true if keep listening is enabled
      */
     public boolean isKeepListening() {
         return keepListening;
@@ -190,7 +190,7 @@ public class XiaozhiCore {
     
     /**
      * Set AEC (Acoustic Echo Cancellation) enabled
-     * Ảnh hưởng đến default listening mode
+     * Affects the default listening mode
      * 
      * @param enabled AEC enabled flag
      */
@@ -209,7 +209,7 @@ public class XiaozhiCore {
     /**
      * Check if AEC is enabled
      * 
-     * @return true nếu AEC enabled
+     * @return true if AEC is enabled
      */
     public boolean isAecEnabled() {
         return aecEnabled;
@@ -219,7 +219,7 @@ public class XiaozhiCore {
     
     /**
      * Set connection service reference
-     * Được gọi bởi XiaozhiConnectionService khi onCreate()
+     * Called by XiaozhiConnectionService in onCreate()
      */
     public void setConnectionService(XiaozhiConnectionService service) {
         this.connectionService = service;
@@ -235,7 +235,7 @@ public class XiaozhiCore {
     
     /**
      * Set audio service reference
-     * Được gọi bởi AudioPlaybackService khi onCreate()
+     * Called by AudioPlaybackService in onCreate()
      */
     public void setAudioService(AudioPlaybackService service) {
         this.audioService = service;
@@ -251,7 +251,7 @@ public class XiaozhiCore {
     
     /**
      * Set voice recognition service reference
-     * Được gọi bởi VoiceRecognitionService khi onCreate()
+     * Called by VoiceRecognitionService in onCreate()
      */
     public void setVoiceService(VoiceRecognitionService service) {
         this.voiceService = service;
@@ -267,7 +267,7 @@ public class XiaozhiCore {
     
     /**
      * Set LED control service reference
-     * Được gọi bởi LEDControlService khi onCreate()
+     * Called by LEDControlService in onCreate()
      */
     public void setLedService(LEDControlService service) {
         this.ledService = service;
@@ -285,7 +285,7 @@ public class XiaozhiCore {
     
     /**
      * Get EventBus instance
-     * Dùng để register/unregister listeners và post events
+     * Used to register/unregister listeners and post events
      * 
      * @return EventBus instance
      */
@@ -307,7 +307,7 @@ public class XiaozhiCore {
     // ==================== State Snapshot ====================
     
     /**
-     * Get snapshot của toàn bộ state (cho debugging)
+     * Get snapshot of the entire state (for debugging)
      * 
      * @return String representation of current state
      */
@@ -335,8 +335,8 @@ public class XiaozhiCore {
     // ==================== Shutdown ====================
     
     /**
-     * Cleanup resources khi shutdown
-     * Nên được gọi trong Application.onTerminate() hoặc khi thoát app
+     * Cleanup resources on shutdown
+     * Should be called in Application.onTerminate() or when exiting the app
      */
     public void shutdown() {
         Log.i(TAG, "Shutting down XiaozhiCore...");
