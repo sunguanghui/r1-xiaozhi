@@ -1,514 +1,572 @@
-# Hướng dẫn Tích hợp Xiaozhi vào Phicomm R1
+# Guide to Integrating Xiaozhi into Phicomm R1
 
-## Tổng quan
+## Overview
 
-Dự án này tích hợp thư viện **xiaozhi** vào loa **Phicomm R1**, biến nó thành AI voice assistant thông minh với khả năng:
+This project integrates the **xiaozhi** library into the **Phicomm R1** speaker, transforming it into a smart AI voice assistant with the following capabilities:
 
-- ✅ Nhận diện giọng nói và wake word detection
-- ✅ Kết nối với Xiaozhi API (Cloud hoặc Self-hosted)
-- ✅ Phát âm thanh TTS từ Xiaozhi
-- ✅ Điều khiển LED để hiển thị trạng thái
-- ✅ Tự động khởi động khi boot
-- ✅ Chạy nền 24/7
+* ✅ Voice recognition and wake word detection
+* ✅ Connection to the Xiaozhi API (Cloud or Self-hosted)
+* ✅ TTS (Text-to-Speech) audio playback from Xiaozhi
+* ✅ LED control for status indication
+* ✅ Automatic startup on boot
+* ✅ 24/7 background operation
 
-## Yêu cầu
+## Requirements
 
-### Phần cứng
-- **Phicomm R1** speaker (với chipset Rockchip RK3229)
-- Kết nối ADB qua USB hoặc WiFi
-- Root access (để điều khiển LED)
+### Hardware
 
-### Phần mềm
-- **Android Studio** 2.3.3 hoặc mới hơn
-- **Android SDK** API Level 22 (Android 5.1)
-- **JDK** 1.7 hoặc 1.8
-- **ADB** (Android Debug Bridge)
-- **Gradle** (đi kèm với Android Studio)
+* **Phicomm R1** speaker (with Rockchip RK3229 chipset)
+* ADB connection via USB or WiFi
+* Root access (for LED control)
+
+### Software
+
+* **Android Studio** 2.3.3 or newer
+* **Android SDK** API Level 22 (Android 5.1)
+* **JDK** 1.7 or 1.8
+* **ADB** (Android Debug Bridge)
+* **Gradle** (included with Android Studio)
 
 ### Xiaozhi API
-- Tài khoản Xiaozhi Cloud (https://xiaozhi.me) HOẶC
-- Self-hosted Xiaozhi server (xem docs tại https://stable-learn.com/en/py-xiaozhi-guide/)
 
-## Bước 1: Chuẩn bị môi trường phát triển
+* Xiaozhi Cloud account ([https://xiaozhi.me](https://xiaozhi.me)) OR
+* Self-hosted Xiaozhi server (see docs at [https://stable-learn.com/en/py-xiaozhi-guide/](https://stable-learn.com/en/py-xiaozhi-guide/))
 
-### 1.1. Cài đặt Android Studio
+## Step 1: Prepare the Development Environment
+
+### 1.1. Install Android Studio
 
 ```bash
-# Download Android Studio từ:
+# Download Android Studio from:
 # https://developer.android.com/studio
 
-# Sau khi cài đặt, mở Android Studio và cài các components:
+# After installation, open Android Studio and install these components:
 # - Android SDK Platform 22
 # - Android SDK Build-Tools 22.0.1
 # - Android SDK Platform-Tools
+
 ```
 
-### 1.2. Thiết lập ADB
+### 1.2. Set Up ADB
 
 ```bash
-# Kiểm tra ADB đã cài đặt
+# Check if ADB is installed
 adb version
 
-# Nếu chưa có, thêm vào PATH:
-# Windows: Thêm C:\Users\[YourUser]\AppData\Local\Android\Sdk\platform-tools vào PATH
+# If not, add it to your PATH:
+# Windows: Add C:\Users\[YourUser]\AppData\Local\Android\Sdk\platform-tools to PATH
 # Linux/Mac: export PATH=$PATH:~/Android/Sdk/platform-tools
+
 ```
 
-### 1.3. Kết nối R1 qua ADB
+### 1.3. Connect to the R1 via ADB
 
 ```bash
-# Bật Developer Mode trên R1 (nếu có thể truy cập settings)
-# Hoặc kết nối qua USB và enable ADB
+# Enable Developer Mode on the R1 (if settings are accessible)
+# Or connect via USB and enable ADB
 
-# Kiểm tra kết nối
+# Check connection
 adb devices
 
-# Nếu kết nối qua WiFi
-adb connect 192.168.1.XXX:5555  # Thay XXX bằng IP của R1
+# If connecting via WiFi
+adb connect 192.168.1.XXX:5555  # Replace XXX with the R1's IP address
+
 ```
 
-## Bước 2: Build ứng dụng
+## Step 2: Build the Application
 
-### 2.1. Clone hoặc mở project
+### 2.1. Clone or Open the Project
 
 ```bash
-# Mở Android Studio
-# File > Open > Chọn folder R1XiaozhiApp
+# Open Android Studio
+# File > Open > Select the R1XiaozhiApp folder
+
 ```
 
 ### 2.2. Sync Gradle
 
 ```bash
-# Android Studio sẽ tự động sync
-# Hoặc chạy thủ công:
+# Android Studio will automatically sync
+# Or run manually:
 cd R1XiaozhiApp
 ./gradlew clean build  # Linux/Mac
 gradlew.bat clean build  # Windows
+
 ```
 
-### 2.3. Build APK
+### 2.3. Build the APK
 
 ```bash
-# Build debug APK (cho testing)
+# Build the debug APK (for testing)
 ./gradlew assembleDebug
 
-# Build release APK (cho production)
+# Build the release APK (for production)
 ./gradlew assembleRelease
 
-# APK sẽ được tạo tại:
+# The APK will be generated at:
 # app/build/outputs/apk/debug/app-debug.apk
 # app/build/outputs/apk/release/app-release.apk
-```
-
-## Bước 3: Thiết lập Xiaozhi Cloud
-
-### 3.1. Đăng ký tài khoản Xiaozhi
-
-1. **Truy cập** https://xiaozhi.me/
-2. **Đăng ký** tài khoản mới
-3. **Đăng nhập** và chọn **Console**
-
-### 3.2. Tạo Agent (Trợ lý AI)
-
-1. Trong Console, click **"Create Agent"** ở góc trên bên phải
-2. Đặt tên cho Agent (ví dụ: "R1 Assistant")
-3. Cấu hình Agent:
 
 ```
+
+## Step 3: Configure Xiaozhi Cloud
+
+### 3.1. Register a Xiaozhi Account
+
+1. **Visit** [https://xiaozhi.me/](https://xiaozhi.me/)
+2. **Register** for a new account
+3. **Log in** and select **Console**
+
+### 3.2. Create an Agent (AI Assistant)
+
+1. In the Console, click **"Create Agent"** in the top right corner
+2. Name the Agent (e.g., "R1 Assistant")
+3. Configure the Agent:
+
+```text
 Dialogue Language: Vietnamese
-Voice Role: Giọng nữ (hoặc giọng nam tùy thích)
+Voice Role: Female voice (or male voice as preferred)
 Role Introduction:
-  Tôi là {{assistant_name}}, trợ lý ảo thông minh trên loa Phicomm R1.
-  Tôi có giọng nói dễ nghe, thích dùng câu ngắn gọn và luôn sẵn sàng giúp đỡ bạn.
+  I am {{assistant_name}}, a smart virtual assistant on the Phicomm R1 speaker.
+  I have a pleasant voice, prefer using concise sentences, and am always ready to help you.
+
 ```
 
-4. **Lưu cấu hình**
+4. **Save the configuration**
 
-### 3.3. Thêm thiết bị R1 vào Agent
+### 3.3. Add the R1 Device to the Agent
 
-1. Trong Agent vừa tạo, click **"Manage Devices"** (hoặc "Add Device" nếu chưa có thiết bị)
-2. Hệ thống sẽ hiển thị form yêu cầu **6 chữ số pairing code**
-3. **GIỮ trang này mở** - chúng ta sẽ lấy mã từ R1 ở bước sau
+1. Within the newly created Agent, click **"Manage Devices"** (or "Add Device" if there are no devices yet)
+2. The system will display a form requesting a **6-digit pairing code**
+3. **KEEP this page open** - we will retrieve the code from the R1 in the next step
 
-### 3.4. Lấy mã pairing từ R1
+### 3.4. Retrieve the Pairing Code from the R1
 
-Sau khi cài app lên R1 (Bước 4), app sẽ tự động tạo và hiển thị **mã 6 số**:
+After installing the app on the R1 (Step 4), the app will automatically generate and display a **6-digit code**:
 
-**Cách 1: Xem qua ADB log**
+**Method 1: Check via ADB log**
+
 ```bash
-# Xem log để tìm pairing code
+# View the log to find the pairing code
 adb logcat | grep "Pairing Code"
 
-# Output sẽ có dạng:
+# The output will look like:
 # XiaozhiConnection: Pairing Code: 123456
+
 ```
 
-**Cách 2: Xem qua HTTP API**
+**Method 2: Check via HTTP API**
+
 ```bash
-# Truy cập từ browser hoặc curl
+# Access via a browser or curl
 curl http://192.168.1.XXX:8088/pairing
 
-# Hoặc mở trình duyệt: http://192.168.1.XXX:8088/pairing
+# Or open a web browser: http://192.168.1.XXX:8088/pairing
+
 ```
 
-**Cách 3: Xem trên màn hình (nếu R1 có output HDMI)**
-- App sẽ hiển thị mã pairing lớn trên màn hình
+**Method 3: View on screen (if the R1 has HDMI output)**
 
-### 3.5. Hoàn tất pairing
+* The app will display the pairing code prominently on the screen
 
-1. Copy **mã 6 số** từ R1
-2. Quay lại trang Xiaozhi Console
-3. Nhập mã vào form "Add Device"
-4. Click **"Add"** hoặc **"Pair Device"**
-5. ✅ **Thành công!** R1 của bạn đã được kết nối với Xiaozhi Cloud
+### 3.5. Complete the Pairing
+
+1. Copy the **6-digit code** from the R1
+2. Return to the Xiaozhi Console page
+3. Enter the code into the "Add Device" form
+4. Click **"Add"** or **"Pair Device"**
+5. ✅ **Success!** Your R1 is now connected to Xiaozhi Cloud
+
 ---
 
-## 🔐 Cơ chế Pairing Code (Quan trọng!)
+## 🔐 Pairing Code Mechanism (Important!)
 
-### Device ID và Pairing Code
+### Device ID and Pairing Code
 
-App sử dụng **Device ID dựa trên MAC address** để tạo pairing code (theo chuẩn xiaozhi-esp32):
+The app uses a **Device ID based on the MAC address** to generate the pairing code (following the xiaozhi-esp32 standard):
 
-**Quy trình:**
-1. **Lấy WiFi MAC Address** của R1 (ví dụ: `AA:BB:CC:DD:EE:FF`)
-2. **Tạo Device ID**: Remove dấu `:` → `AABBCCDDEEFF`
-3. **Tạo Pairing Code**: Lấy 6 ký tự cuối → `DDEEFF`
+**Process:**
 
-**Ưu điểm:**
-- ✅ Code **cố định**, không đổi khi reboot
-- ✅ Tương thích với **Xiaozhi Cloud protocol**
-- ✅ Dễ debug và kiểm tra
-- ✅ Mỗi thiết bị có code duy nhất
+1. **Retrieve the WiFi MAC Address** of the R1 (e.g., `AA:BB:CC:DD:EE:FF`)
+2. **Create the Device ID**: Remove the `:` colons → `AABBCCDDEEFF`
+3. **Generate the Pairing Code**: Take the last 6 characters → `DDEEFF`
+
+**Advantages:**
+
+* ✅ The code is **static** and does not change upon reboot
+* ✅ Compatible with the **Xiaozhi Cloud protocol**
+* ✅ Easy to debug and verify
+* ✅ Every device has a unique code
 
 **Fallback Options:**
-- Nếu không lấy được MAC → dùng **Android ID**
-- Nếu cả 2 fail → dùng **timestamp** (last resort)
 
-### Xem Device ID và Pairing Code
+* If the MAC address cannot be retrieved → it uses the **Android ID**
+* If both fail → it uses a **timestamp** (last resort)
+
+### Viewing the Device ID and Pairing Code
 
 ```bash
-# Qua ADB logcat
+# Via ADB logcat
 adb logcat | grep "PairingCode"
 # Output:
 # PairingCode: Device ID: AABBCCDDEEFF
 # PairingCode: Pairing Code: DDEEFF
 
-# Qua HTTP API
+# Via HTTP API
 curl http://192.168.1.XXX:8088/pairing
 
-# Qua Web UI
+# Via Web UI
 http://192.168.1.XXX:8088/
+
 ```
 
-### Debug Pairing Issues
+### Debugging Pairing Issues
 
 **Verify Device ID format:**
+
 ```bash
-# Device ID phải là 12 ký tự hex (0-9, A-F)
-# Pairing Code phải là 6 ký tự hex
-# Ví dụ hợp lệ:
+# The Device ID must be 12 hex characters (0-9, A-F)
+# The Pairing Code must be 6 hex characters
+# Valid example:
 #   Device ID: AABBCC123456
 #   Pairing Code: 123456
+
 ```
 
 **Check MAC address:**
+
 ```bash
-# Kiểm tra MAC của R1
+# Check the MAC address of the R1
 adb shell ip addr show wlan0 | grep "link/ether"
 # Output: link/ether aa:bb:cc:dd:ee:ff
-# → Device ID sẽ là: AABBCCDDEEFF
-# → Pairing Code sẽ là: DDEEFF
+# → Device ID will be: AABBCCDDEEFF
+# → Pairing Code will be: DDEEFF
+
 ```
 
-**Nếu MAC bị fake (Android 6+):**
-- Android 6+ có thể trả về MAC fake: `02:00:00:00:00:00`
-- App sẽ tự động fallback sang Android ID
-- Hoặc reset pairing để dùng timestamp-based ID
+**If the MAC is faked (Android 6+):**
+
+* Android 6+ may return a fake MAC address: `02:00:00:00:00:00`
+* The app will automatically fallback to the Android ID
+* Alternatively, reset the pairing to use a timestamp-based ID
 
 ---
-### 3.6. Nếu gặp lỗi "Device already added"
 
-Điều này xảy ra khi mã pairing đã được sử dụng trước đó. **Giải pháp:**
+### 3.6. If you encounter the "Device already added" error
 
-**Cách 1: Reset qua App (R1 có màn hình)**
-- Mở app trên R1
-- Click nút **"Reset Pairing"**
-- Mã mới sẽ hiển thị ngay
+This occurs when the pairing code has already been used previously. **Solutions:**
 
-**Cách 2: Reset qua Web UI**
+**Method 1: Reset via App (if the R1 has a screen)**
+
+* Open the app on the R1
+* Click the **"Reset Pairing"** button
+* A new code will appear immediately
+
+**Method 2: Reset via Web UI**
+
 ```bash
-# Truy cập từ browser hoặc curl
+# Access via a browser or curl
 curl http://192.168.1.XXX:8088/reset-pairing
 
-# Output sẽ có mã mới:
+# The output will contain a new code:
 # {"status":"success","new_pairing_code":"654321",...}
+
 ```
 
-**Cách 3: Reset qua ADB**
+**Method 3: Reset via ADB**
+
 ```bash
-# Xóa SharedPreferences
+# Clear SharedPreferences
 adb shell rm /data/data/com.phicomm.r1.xiaozhi/shared_prefs/xiaozhi_pairing.xml
 
-# Restart app
+# Restart the app
 adb shell am force-stop com.phicomm.r1.xiaozhi
 adb shell am start -n com.phicomm.r1.xiaozhi/.ui.MainActivity
 
-# Xem mã mới
+# View the new code
 adb logcat | findstr /i "PAIRING CODE"
+
 ```
 
-Sau khi reset, sử dụng **mã mới** để add device vào Xiaozhi Console.
+After resetting, use the **new code** to add the device to the Xiaozhi Console.
 
+### 3.6. Choose a Connection Mode
 
-### 3.6. Chọn mode kết nối
+You have 2 options:
 
-Bạn có 2 lựa chọn:
+**Option A: Use Xiaozhi Cloud (Recommended - already set up above)**
 
-**Option A: Sử dụng Xiaozhi Cloud (Khuyến nghị - đã setup ở trên)**
-- URL: `wss://xiaozhi.me/websocket`
-- Đã đăng ký và pair thiết bị
-- Không cần tự host server
+* URL: `wss://xiaozhi.me/websocket`
+* Device is registered and paired
+* No need to host a server yourself
 
 **Option B: Self-hosted Xiaozhi Server (Advanced)**
-- Cài đặt server theo hướng dẫn: https://stable-learn.com/en/py-xiaozhi-guide/
-- URL: `ws://YOUR_SERVER_IP:8080/websocket`
-- Cần kiến thức về server hosting
 
-### 3.7. Sửa cấu hình mặc định (Optional)
+* Install the server following the guide: [https://stable-learn.com/en/py-xiaozhi-guide/](https://stable-learn.com/en/py-xiaozhi-guide/)
+* URL: `ws://YOUR_SERVER_IP:8080/websocket`
+* Requires server hosting knowledge
 
-Mở file [`XiaozhiConfig.java`](R1XiaozhiApp/app/src/main/java/com/phicomm/r1/xiaozhi/config/XiaozhiConfig.java:25) và sửa:
+### 3.7. Edit the Default Configuration (Optional)
+
+Open the file [`XiaozhiConfig.java`](https://www.google.com/search?q=R1XiaozhiApp/app/src/main/java/com/phicomm/r1/xiaozhi/config/XiaozhiConfig.java:25) and modify:
 
 ```java
 public static final String DEFAULT_CLOUD_URL = "wss://xiaozhi.me/websocket";
 public static final String DEFAULT_SELF_HOSTED_URL = "ws://192.168.1.100:8080/websocket";
-public static final String DEFAULT_WAKE_WORD = "小智"; // Hoặc "Xiao Zhi"
+public static final String DEFAULT_WAKE_WORD = "小智"; // Or "Xiao Zhi"
+
 ```
 
-## Bước 4: Cài đặt lên R1
+## Step 4: Install on the R1
 
-### 4.1. Disable system apps của R1 (Quan trọng!)
+### 4.1. Disable R1 System Apps (Important!)
 
 ```bash
-# Disable các app gốc của Phicomm để tránh xung đột
+# Disable original Phicomm apps to prevent conflicts
 adb shell pm hide com.phicomm.speaker.player
 adb shell pm hide com.phicomm.speaker.device
 adb shell pm hide com.phicomm.speaker.airskill
 adb shell pm hide com.phicomm.speaker.exceptionreporter
 
-# Kiểm tra đã disable thành công
+# Verify that they were disabled successfully
 adb shell pm list packages -d | grep phicomm
+
 ```
 
-### 4.2. Cài đặt APK
+### 4.2. Install the APK
 
 ```bash
-# Copy APK lên R1
+# Copy the APK to the R1
 adb push app/build/outputs/apk/release/app-release.apk /data/local/tmp/
 
-# Cài đặt
+# Install
 adb shell pm install -t -r /data/local/tmp/app-release.apk
 
-# Hoặc cài trực tiếp (nếu ADB version mới)
+# Or install directly (if using a newer ADB version)
 adb install -r app/build/outputs/apk/release/app-release.apk
+
 ```
 
-### 4.3. Grant permissions
+### 4.3. Grant Permissions
 
 ```bash
-# Grant quyền ghi âm và các permissions khác
+# Grant audio recording and other permissions
 adb shell pm grant com.phicomm.r1.xiaozhi android.permission.RECORD_AUDIO
 adb shell pm grant com.phicomm.r1.xiaozhi android.permission.WRITE_EXTERNAL_STORAGE
 adb shell pm grant com.phicomm.r1.xiaozhi android.permission.READ_EXTERNAL_STORAGE
+
 ```
 
-### 4.4. Root R1 để điều khiển LED (Optional nhưng recommended)
+### 4.4. Root the R1 to Control the LED (Optional but recommended)
 
 ```bash
-# Kiểm tra root
+# Check for root access
 adb shell su -c "id"
 
-# Nếu chưa root, tham khảo:
+# If not rooted, refer to:
 # https://github.com/sagan/r1-helper
 # https://www.computersolutions.cn/blog/2019/08/hacking-a-phicomm-r1-speaker/
 
-# Grant quyền su cho app
+# Grant 'su' access to the app
 adb shell su -c "pm grant com.phicomm.r1.xiaozhi android.permission.ACCESS_SUPERUSER"
+
 ```
 
-## Bước 5: Khởi động và cấu hình
+## Step 5: Startup and Configuration
 
-### 5.1. Khởi động app lần đầu
+### 5.1. First-time App Launch
 
 ```bash
 # Start MainActivity
 adb shell am start -n com.phicomm.r1.xiaozhi/.ui.MainActivity
 
-# Hoặc start service trực tiếp
+# Or start the service directly
 adb shell am startservice com.phicomm.r1.xiaozhi/.service.VoiceRecognitionService
 adb shell am startservice com.phicomm.r1.xiaozhi/.service.XiaozhiConnectionService
+
 ```
 
-### 5.2. Cấu hình qua SharedPreferences
+### 5.2. Configure via SharedPreferences
 
 ```bash
-# Set Cloud mode
+# Set to Cloud mode
 adb shell "echo 'use_cloud=true' > /data/data/com.phicomm.r1.xiaozhi/shared_prefs/xiaozhi_config.xml"
 
-# Hoặc edit trực tiếp file XML:
+# Or edit the XML file directly:
 adb pull /data/data/com.phicomm.r1.xiaozhi/shared_prefs/xiaozhi_config.xml
-# Edit local file
+# Edit the local file
 adb push xiaozhi_config.xml /data/data/com.phicomm.r1.xiaozhi/shared_prefs/
+
 ```
 
-### 5.3. Cấu hình tham số
+### 5.3. Configuration Parameters
 
-Các tham số có thể cấu hình:
+Configurable parameters include:
 
-- `use_cloud`: `true` hoặc `false`
-- `cloud_url`: URL của Xiaozhi Cloud
-- `self_hosted_url`: URL của Self-hosted server
-- `api_key`: API key (nếu cần)
-- `wake_word`: Wake word (mặc định: "小智")
-- `auto_start`: Tự động start khi boot (`true`/`false`)
-- `led_enabled`: Bật/tắt LED (`true`/`false`)
-- `http_server_port`: Port cho HTTP server (mặc định: 8088)
+* `use_cloud`: `true` or `false`
+* `cloud_url`: Xiaozhi Cloud URL
+* `self_hosted_url`: Self-hosted server URL
+* `api_key`: API key (if needed)
+* `wake_word`: Wake word (default: "小智")
+* `auto_start`: Auto-start on boot (`true`/`false`)
+* `led_enabled`: Toggle LED on/off (`true`/`false`)
+* `http_server_port`: Port for the HTTP server (default: 8088)
 
-## Bước 6: Testing
+## Step 6: Testing
 
-### 6.1. Kiểm tra log
+### 6.1. Check Logs
 
 ```bash
-# Xem log realtime
+# View logs in realtime
 adb logcat | grep -E "(VoiceRecognition|XiaozhiConnection|AudioPlayback|LEDControl)"
 
-# Hoặc filter theo tag
+# Or filter by tag
 adb logcat VoiceRecognition:D XiaozhiConnection:D AudioPlayback:D LEDControl:D *:S
+
 ```
 
-### 6.2. Test wake word
+### 6.2. Test the Wake Word
 
 ```bash
-# Nói wake word vào mic của R1
-# Mặc định: "小智" (Xiao Zhi)
+# Speak the wake word into the R1's mic
+# Default: "小智" (Xiao Zhi)
 
-# Kiểm tra log để thấy:
+# Check the log to see:
 # VoiceRecognition: Wake word detected!
 # LEDControl: State: LISTENING
+
 ```
 
-### 6.3. Test audio playback
+### 6.3. Test Audio Playback
 
 ```bash
-# Gửi test command
+# Send a test command
 adb shell am startservice \
   -n com.phicomm.r1.xiaozhi/.service.AudioPlaybackService \
   -a com.phicomm.r1.xiaozhi.PLAY_URL \
   --es audio_url "https://example.com/test.mp3"
+
 ```
 
-## Bước 7: Auto-start khi boot
+## Step 7: Auto-start on Boot
 
-### 7.1. Enable auto-start
+### 7.1. Enable Auto-start
 
-App đã có [`BootReceiver`](R1XiaozhiApp/app/src/main/java/com/phicomm/r1/xiaozhi/receiver/BootReceiver.java:1) để tự động khởi động.
+The app includes a [`BootReceiver`](https://www.google.com/search?q=R1XiaozhiApp/app/src/main/java/com/phicomm/r1/xiaozhi/receiver/BootReceiver.java:1) to automatically launch it.
 
 ```bash
-# Kiểm tra BootReceiver đã enable
+# Check if the BootReceiver is enabled
 adb shell pm list packages -e | grep xiaozhi
 
-# Test boot receiver
+# Test the boot receiver
 adb shell am broadcast -a android.intent.action.BOOT_COMPLETED
+
 ```
 
-### 7.2. Disable battery optimization
+### 7.2. Disable Battery Optimization
 
 ```bash
-# Để app không bị kill
+# Prevent the app from being killed
 adb shell dumpsys deviceidle whitelist +com.phicomm.r1.xiaozhi
+
 ```
 
 ## Troubleshooting
 
-### Lỗi: "Cannot connect to Xiaozhi"
+### Error: "Cannot connect to Xiaozhi"
 
-**Giải pháp:**
-1. Kiểm tra kết nối mạng của R1
-2. Ping xiaozhi server: `adb shell ping xiaozhi.me`
-3. Kiểm tra URL trong config
-4. Thử chuyển sang self-hosted mode
+**Solution:**
 
-### Lỗi: "No RECORD_AUDIO permission"
+1. Check the R1's network connection
+2. Ping the xiaozhi server: `adb shell ping xiaozhi.me`
+3. Check the URL in the config
+4. Try switching to self-hosted mode
 
-**Giải pháp:**
+### Error: "No RECORD_AUDIO permission"
+
+**Solution:**
+
 ```bash
 adb shell pm grant com.phicomm.r1.xiaozhi android.permission.RECORD_AUDIO
+
 ```
 
-### Lỗi: "LED control not working"
+### Error: "LED control not working"
 
-**Giải pháp:**
-1. Kiểm tra root access
-2. Test LED manually:
+**Solution:**
+
+1. Check your root access
+2. Test the LED manually:
+
 ```bash
 adb shell su -c "echo '7fff ff0000' > /sys/class/leds/multi_leds0/led_color"
+
 ```
 
-### App bị crash khi boot
+### The App Crashes on Boot
 
-**Giải pháp:**
+**Solution:**
+
 ```bash
-# Xem crash log
+# View the crash log
 adb logcat | grep AndroidRuntime
 
-# Disable auto-start tạm thời
+# Temporarily disable auto-start
 adb shell pm disable com.phicomm.r1.xiaozhi/.receiver.BootReceiver
+
 ```
 
-### Wake word không hoạt động
+### The Wake Word Does Not Work
 
-**Giải pháp:**
-1. Hiện tại đang dùng energy-based detection đơn giản
-2. Để improve, tích hợp thư viện chuyên dụng như:
-   - **Porcupine** (https://github.com/Picovoice/porcupine)
-   - **Snowboy** (https://github.com/Kitt-AI/snowboy)
+**Solution:**
+
+1. Currently, simple energy-based detection is used.
+2. To improve it, integrate a specialized library such as:
+* **Porcupine** ([https://github.com/Picovoice/porcupine](https://github.com/Picovoice/porcupine))
+* **Snowboy** ([https://github.com/Kitt-AI/snowboy](https://github.com/Kitt-AI/snowboy))
+
+
 
 ## Advanced: HTTP API Server
 
-App có built-in HTTP server để remote control:
+The app features a built-in HTTP server for remote control:
 
 ```bash
-# Truy cập từ browser hoặc curl
+# Access via a browser or curl
 curl http://192.168.1.XXX:8088/status
 curl http://192.168.1.XXX:8088/start
 curl http://192.168.1.XXX:8088/stop
 curl http://192.168.1.XXX:8088/config
+
 ```
 
 ## Uninstall
 
 ```bash
-# Remove app
+# Remove the app
 adb uninstall com.phicomm.r1.xiaozhi
 
 # Re-enable system apps
 adb shell pm unhide com.phicomm.speaker.player
 adb shell pm unhide com.phicomm.speaker.device
 adb shell pm unhide com.phicomm.speaker.airskill
+
 ```
 
-## Tài liệu tham khảo
+## References
 
-- **Xiaozhi Docs**: https://stable-learn.com/en/py-xiaozhi-guide/
-- **Xiaozhi Hardware Guide**: https://docs.freenove.com/projects/fnk0102/en/latest/fnk0102/codes/xiaozhi/
-- **R1 Hacking**: https://github.com/sagan/r1-helper
-- **R1 Custom ROM**: https://github.com/sallaixu/R1-APP
+* **Xiaozhi Docs**: [https://stable-learn.com/en/py-xiaozhi-guide/](https://stable-learn.com/en/py-xiaozhi-guide/)
+* **Xiaozhi Hardware Guide**: [https://docs.freenove.com/projects/fnk0102/en/latest/fnk0102/codes/xiaozhi/](https://docs.freenove.com/projects/fnk0102/en/latest/fnk0102/codes/xiaozhi/)
+* **R1 Hacking**: [https://github.com/sagan/r1-helper](https://github.com/sagan/r1-helper)
+* **R1 Custom ROM**: [https://github.com/sallaixu/R1-APP](https://github.com/sallaixu/R1-APP)
 
-## Hỗ trợ
+## Support
 
-Nếu gặp vấn đề, vui lòng:
-1. Kiểm tra logs: `adb logcat | grep Xiaozhi`
-2. Xem lại các bước cấu hình
-3. Test từng service riêng lẻ
+If you encounter any issues, please:
+
+1. Check the logs: `adb logcat | grep Xiaozhi`
+2. Review the configuration steps
+3. Test each service individually
 
 ## License
 
@@ -516,4 +574,4 @@ MIT License - Free to use and modify
 
 ---
 
-**Chúc bạn thành công! 🎉**
+**Good luck! 🎉**
