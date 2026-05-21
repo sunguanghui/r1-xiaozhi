@@ -7,7 +7,7 @@ on:
       - 'v*'
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Cho phép trigger thủ công
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   build:
@@ -80,10 +80,9 @@ jobs:
           --out app-release-signed.apk \
           app-release-aligned.apk
           
-        # 5. 清理临时文件，并将签好名的包重命名为原名，方便后续步骤处理
-        rm my-release-key.jks
-        rm app-release-aligned.apk
-        mv app-release-signed.apk app-release-unsigned.apk
+        # 5. 清理临时文件 (修复：移除了错误重命名为 unsigned 的逻辑，保留 signed 状态)
+        rm -f my-release-key.jks
+        rm -f app-release-aligned.apk
         
     - name: Get version info
       id: version
@@ -114,7 +113,7 @@ jobs:
           mv debug/app-debug.apk debug/R1Xiaozhi-v${{ steps.version.outputs.version_name }}-debug.apk
         fi
         
-        # 查找签名后的 APK (插件默认会在原名后面加上 -signed)
+        # 查找签名后的 APK (这里会自动找到上面生成的 app-release-signed.apk)
         SIGNED_APK=$(find release -name "*signed.apk" -o -name "app-release.apk" | head -n 1)
         if [ -n "$SIGNED_APK" ]; then
           mv "$SIGNED_APK" release/R1Xiaozhi-v${{ steps.version.outputs.version_name }}-release.apk
@@ -155,6 +154,9 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     
+    permissions:
+      contents: write
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -176,31 +178,31 @@ jobs:
       run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         name: Release ${{ steps.tag_version.outputs.version }}
         body: |
           ## Xiaozhi Voice Assistant for Phicomm R1
           
-          ### 📦 Phiên bản: ${{ steps.tag_version.outputs.version }}
+          ### 📦 Version: ${{ steps.tag_version.outputs.version }}
           
-          ### 📥 Tải xuống
-          - **Release APK**: Dành cho production, đã tối ưu và minify
-          - **Checksums**: SHA256 để verify tính toàn vẹn
+          ### 📥 Download
+          - **Release APK**: Production-ready build, optimized and minified.
+          - **Checksums**: SHA-256 file hashes to verify data integrity.
           
-          ### 🚀 Cài đặt nhanh
+          ### 🚀 Quick Start
           ```bash
-          # Download APK
-          wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.tag_version.outputs.version }}/R1Xiaozhi-v${{ steps.tag_version.outputs.version }}-release.apk
+          # Download the APK
+          wget [https://github.com/$](https://github.com/$){{ github.repository }}/releases/download/v${{ steps.tag_version.outputs.version }}/R1Xiaozhi-v${{ steps.tag_version.outputs.version }}-release.apk
           
           # Install via ADB
           adb install -r R1Xiaozhi-v${{ steps.tag_version.outputs.version }}-release.apk
           ```
           
-          ### 📝 Hướng dẫn
-          Xem chi tiết tại [HUONG_DAN_CAI_DAT.md](https://github.com/${{ github.repository }}/blob/main/HUONG_DAN_CAI_DAT.md)
+          ### 📝 Documentation
+          For detailed configuration guidelines, please refer to [HUONG_DAN_CAI_DAT.md](https://github.com/${{ github.repository }}/blob/main/HUONG_DAN_CAI_DAT.md)
           
-          ### ✨ Tính năng
+          ### ✨ Features
           - ✅ Wake word detection
           - ✅ Xiaozhi Cloud & Self-hosted support
           - ✅ Auto-fallback mechanism
