@@ -1,26 +1,30 @@
-# Xiaozhi Authentication Methods - So Sánh 3 Phương Pháp
+# Xiaozhi Authentication Methods - Comparison of 3 Methods
 
-## 📋 Tổng Quan
+## 📋 Overview
 
-Server Xiaozhi hỗ trợ **3 phương pháp authentication** khác nhau tùy theo client type và setup.
+The Xiaozhi server supports **3 different authentication methods** depending on the client type and setup.
 
 ---
 
 ## 🔐 Method 1: ESP32 Authorize Handshake
 
-### Nguồn
-- Repository: https://github.com/78/xiaozhi-esp32
-- File: `main/xiaozhi.c`
+### Source
+
+* Repository: [https://github.com/78/xiaozhi-esp32](https://github.com/78/xiaozhi-esp32)
+* File: `main/xiaozhi.c`
 
 ### Flow
-```
+
+```text
 1. Connect WebSocket: wss://xiaozhi.me/v1/ws
 2. Send Authorize handshake
 3. Wait for response
 4. Ready to use
+
 ```
 
 ### Message Format
+
 ```json
 {
   "header": {
@@ -38,37 +42,44 @@ Server Xiaozhi hỗ trợ **3 phương pháp authentication** khác nhau tùy th
     "model": "WROVER"
   }
 }
+
 ```
 
 ### Pairing Flow
-```
+
+```text
 1. User goes to xiaozhi.me/console
 2. Add device, enter pairing code: DDEEFF
 3. Server saves mapping: code → waiting
 4. ESP32 connects and sends handshake
 5. Server matches code → Success
+
 ```
 
-### ✅ Ưu điểm
-- Đơn giản, không cần API
-- Gen code local từ MAC
-- Phù hợp với embedded devices
+### ✅ Advantages
 
-### ❌ Nhược điểm
-- User phải nhập code thủ công
-- Code có thể expire
-- Không có session management
+* Simple, does not require an API.
+* Generates the code locally from the MAC address.
+* Suitable for embedded devices.
+
+### ❌ Disadvantages
+
+* The user must enter the code manually.
+* The code can expire.
+* Lacks session management.
 
 ---
 
 ## 🔐 Method 2: py-xiaozhi Device Activation
 
-### Nguồn
-- Repository local: F:/PHICOMM_R1/xiaozhi/py-xiaozhi
-- Files: `device_activator.py`, `device_fingerprint.py`, `websocket_protocol.py`
+### Source
+
+* Local repository: F:/PHICOMM_R1/xiaozhi/py-xiaozhi
+* Files: `device_activator.py`, `device_fingerprint.py`, `websocket_protocol.py`
 
 ### Flow
-```
+
+```text
 1. Generate serial number from MAC
 2. Register device (POST /activate with HMAC challenge)
 3. Wait for user to enter verification code
@@ -77,9 +88,11 @@ Server Xiaozhi hỗ trợ **3 phương pháp authentication** khác nhau tùy th
 6. Connect WebSocket with token in headers
 7. Send hello message
 8. Ready to use
+
 ```
 
 ### Device Registration
+
 ```python
 # Generate identity
 serial_number = "SN-HASH-MAC"
@@ -102,9 +115,11 @@ Body:
     "hmac": "calculated_hmac"
   }
 }
+
 ```
 
 ### WebSocket Connection
+
 ```python
 # Connect with headers
 ws = websockets.connect(
@@ -130,35 +145,41 @@ ws = websockets.connect(
     "frame_duration": 20
   }
 }
+
 ```
 
-### ✅ Ưu điểm
-- Secure với HMAC
-- Có session/token management
-- Voice announcement của verification code
-- Retry logic với polling
+### ✅ Advantages
 
-### ❌ Nhược điểm
-- Phức tạp hơn
-- Cần API endpoints
-- Cần storage cho credentials
+* Secure through the use of HMAC.
+* Features session and token management.
+* Includes voice announcement for the verification code.
+* Built-in retry logic utilizing polling.
+
+### ❌ Disadvantages
+
+* More complex to implement.
+* Requires specific API endpoints.
+* Requires storage for credentials.
 
 ---
 
 ## 🔐 Method 3: Self-hosted Simple Auth
 
 ### Flow
-```
+
+```text
 1. Connect to self-hosted server
 2. May not need authentication
 3. Or use simple token
+
 ```
 
 ---
 
 ## 🎯 R1 Android Current Implementation
 
-### Đang dùng: ESP32 Method (Modified)
+### Currently Using: ESP32 Method (Modified)
+
 ```java
 // XiaozhiConnectionService.java
 POST ws://xiaozhi.me/v1/ws
@@ -176,61 +197,71 @@ POST ws://xiaozhi.me/v1/ws
     "model": "R1"                   // ✓ Added
   }
 }
+
 ```
 
 ---
 
-## 🔍 Vấn Đề Hiện Tại
+## 🔍 Current Issues
 
 ### Symptom
-"Mã 6 số không được" - pairing code không hoạt động
+
+"The 6-digit code does not work" - the pairing code fails to function.
 
 ### Possible Causes
 
-#### 1. Server Yêu Cầu py-xiaozhi Method
-Server `xiaozhi.me` có thể đã upgrade và chỉ chấp nhận:
-- Device activation flow
-- Authorization header với bearer token
-- **KHÔNG chấp nhận** ESP32 Authorize handshake nữa
+#### 1. The Server Requires the py-xiaozhi Method
 
-#### 2. Thiếu Trường Bắt Buộc
-Nếu vẫn support ESP32 method, có thể thiếu:
-- `client_id` trong payload?
-- Headers không đúng?
+The `xiaozhi.me` server may have been upgraded and now only accepts:
 
-#### 3. Server Config
-- Server có multiple authentication modes
-- Cần check endpoint/version
+* The device activation flow.
+* The Authorization header with a bearer token.
+* It **NO LONGER accepts** the ESP32 Authorize handshake.
+
+#### 2. Missing Mandatory Fields
+
+If the server still supports the ESP32 method, it might be missing:
+
+* The `client_id` in the payload?
+* Incorrect headers?
+
+#### 3. Server Configuration
+
+* The server has multiple authentication modes.
+* Need to verify the endpoint and version.
 
 ---
 
-## ✅ Giải Pháp Đề Xuất
+## ✅ Proposed Solutions
 
-### Option A: Giữ ESP32 Method (Quick Fix)
+### Option A: Keep the ESP32 Method (Quick Fix)
 
-**If server vẫn support ESP32 method:**
+**If the server still supports the ESP32 method:**
 
-1. ✅ Đã fix format (device_type, added fields)
-2. ❓ Thử add `client_id` vào payload:
+1. ✅ Format fixed (device_type, added fields).
+2. ❓ Try adding `client_id` to the payload:
 
 ```java
 payload.put("client_id", XiaozhiConfig.CLIENT_ID); // "1000013"
+
 ```
 
-3. ❓ Check headers có đủ không:
+3. ❓ Check if all necessary headers are present:
 
 ```java
 // WebSocket headers
 headers.put("Protocol-Version", "1");
 headers.put("Device-Id", deviceId);
 headers.put("Client-Id", clientId);
+
 ```
 
-### Option B: Implement py-xiaozhi Method (Recommended)
+### Option B: Implement the py-xiaozhi Method (Recommended)
 
-**Full implementation như py-xiaozhi:**
+**Full implementation mirroring py-xiaozhi:**
 
 #### Step 1: Create DeviceActivator
+
 ```java
 public class DeviceActivator {
     public ActivationResult activate(Context context) {
@@ -242,9 +273,11 @@ public class DeviceActivator {
         // 6. Return token
     }
 }
+
 ```
 
 #### Step 2: Update XiaozhiConnectionService
+
 ```java
 public void connect() {
     // 1. Check if activated
@@ -280,6 +313,7 @@ private void sendHello() {
     
     webSocket.send(hello.toString());
 }
+
 ```
 
 ### Option C: Support Both Methods
@@ -300,6 +334,7 @@ public void connect(AuthMethod method) {
             break;
     }
 }
+
 ```
 
 ---
@@ -307,35 +342,43 @@ public void connect(AuthMethod method) {
 ## 🧪 Testing Strategy
 
 ### 1. Test Current ESP32 Method
+
 ```bash
 # Check if Authorize still works
 adb logcat | grep "Authorize"
+
 ```
 
-Expected:
-- ✅ Send Authorize handshake
-- ✅ Receive response with code="0"
-- ❌ Receive error "Invalid pairing code" or "Method not supported"
+Expected behavior:
+
+* ✅ Sends Authorize handshake.
+* ✅ Receives response with code="0".
+* ❌ Receives error "Invalid pairing code" or "Method not supported".
 
 ### 2. Test py-xiaozhi Method
-Implement activation flow và test:
+
+Implement the activation flow and test:
+
 ```bash
 # Should display verification code
 adb logcat | grep "verification"
+
 ```
 
 ### 3. Network Inspection
+
 ```bash
 # Capture WebSocket traffic
 adb shell "tcpdump -i any -s 0 -w /sdcard/websocket.pcap port 443"
+
 ```
 
 ---
 
-## 📊 So Sánh Methods
+## 📊 Methods Comparison
 
 | Feature | ESP32 | py-xiaozhi | Self-hosted |
-|---------|-------|------------|-------------|
+| --- | --- | --- | --- |
 | Complexity | ⭐ Low | ⭐⭐⭐ High | ⭐⭐ Medium |
 | Security | ⭐⭐ Basic | ⭐⭐⭐ HMAC | ⭐ Variable |
 | Setup | Manual code entry | Voice announcement | Auto/None |
@@ -343,29 +386,35 @@ adb shell "tcpdump -i any -s 0 -w /sdcard/websocket.pcap port 443"
 | Server Support | ✅ Older | ✅ Current | ✅ Custom |
 | Best For | IoT devices | Desktop/Mobile | Development |
 
+*(Table Source:)*
+
 ---
 
 ## 🎯 Recommendation
 
 ### Immediate (Quick Test):
-1. Thêm `client_id` vào Authorize payload
-2. Test xem có work không
 
-### Short-term (If ESP32 không work):
-1. Implement py-xiaozhi activation flow
-2. Support token-based authentication
-3. Add verification code display
+1. Add `client_id` to the Authorize payload.
+2. Test to see if it works.
+
+### Short-term (If ESP32 does not work):
+
+1. Implement the py-xiaozhi activation flow.
+2. Support token-based authentication.
+3. Add verification code display functionality.
 
 ### Long-term:
-1. Support both methods
-2. Auto-detect server requirements
-3. Fallback giữa methods
+
+1. Support both methods.
+2. Automatically detect server requirements.
+3. Implement fallback mechanisms between methods.
 
 ---
 
 ## 📝 Code Examples
 
 ### Quick Fix: Add client_id
+
 ```java
 // XiaozhiConnectionService.java
 private void sendAuthorizeHandshake() {
@@ -382,21 +431,25 @@ private void sendAuthorizeHandshake() {
     
     // ... rest of code ...
 }
+
 ```
 
 ### Full py-xiaozhi Implementation
+
 See: `PY_XIAOZHI_ACTIVATION_IMPLEMENTATION.md` (to be created)
 
 ---
 
 ## 🔗 References
 
-- ESP32 Code: https://github.com/78/xiaozhi-esp32
-- py-xiaozhi: F:/PHICOMM_R1/xiaozhi/py-xiaozhi
-- Current Android: [XiaozhiConnectionService.java](R1XiaozhiApp/app/src/main/java/com/phicomm/r1/xiaozhi/service/XiaozhiConnectionService.java)
+* ESP32 Code: [https://github.com/78/xiaozhi-esp32](https://github.com/78/xiaozhi-esp32)
+* py-xiaozhi: F:/PHICOMM_R1/xiaozhi/py-xiaozhi
+* Current Android: [XiaozhiConnectionService.java](https://www.google.com/search?q=R1XiaozhiApp/app/src/main/java/com/phicomm/r1/xiaozhi/service/XiaozhiConnectionService.java)
 
 ---
 
 **Status**: 🔍 Investigating
-**Next Action**: Test quick fix với `client_id`
+
+**Next Action**: Test the quick fix with `client_id`
+
 **Created**: 2025-10-17
