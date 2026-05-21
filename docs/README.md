@@ -56,7 +56,7 @@ install.bat [R1_IP_ADDRESS]
 
 ### Method 2: Manual Installation
 
-See detailed instructions in the [`INSTALLATION_GUIDE.md`](INSTALLATION_GUIDE.md:1) file.
+See detailed instructions in the [`INSTALLATION_GUIDE.md`](./INSTALLATION_GUIDE.md) file.
 
 ## 📁 Project Structure
 
