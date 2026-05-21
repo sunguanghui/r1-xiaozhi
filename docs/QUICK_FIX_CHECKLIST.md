@@ -267,7 +267,7 @@ adb shell dumpsys netstats | grep xiaozhi
 | [PAIRING_DEBUG_GUIDE.md](PAIRING_DEBUG_GUIDE.md) | Debug pairing issues |
 | [TESTING_GUIDE.md](TESTING_GUIDE.md) | Comprehensive test cases |
 | [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) | Project overview |
-| [HUONG_DAN_CAI_DAT.md](HUONG_DAN_CAI_DAT.md) | Installation guide (Vietnamese) |
+| [INSTALLATION_GUIDE.md](docs/INSTALLATION_GUIDE.md) | Installation guide (Vietnamese) |
 
 ---
 

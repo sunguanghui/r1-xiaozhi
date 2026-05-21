@@ -389,7 +389,7 @@ After testing is complete:
 ## Support
 
 **Issues**: https://github.com/xuan2261/r1-xiaozhi/issues  
-**Docs**: See `README.md`, `HUONG_DAN_CAI_DAT.md`  
+**Docs**: See `README.md`, `INSTALLATION_GUIDE.md`  
 **Debug**: See `PAIRING_DEBUG_GUIDE.md`
 
 ---

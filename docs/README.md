@@ -56,7 +56,7 @@ install.bat [R1_IP_ADDRESS]
 
 ### Method 2: Manual Installation
 
-See detailed instructions in the [`HUONG_DAN_CAI_DAT.md`](HUONG_DAN_CAI_DAT.md:1) file.
+See detailed instructions in the [`INSTALLATION_GUIDE.md`](docs/INSTALLATION_GUIDE.md:1) file.
 
 ## 📁 Project Structure
 
@@ -84,7 +84,8 @@ See detailed instructions in the [`HUONG_DAN_CAI_DAT.md`](HUONG_DAN_CAI_DAT.md:1
 ├── scripts/
 │   ├── install.sh                   # Installation script (Linux/Mac)
 │   └── install.bat                  # Installation script (Windows)
-├── HUONG_DAN_CAI_DAT.md             # Detailed instructions
+├── scripts/
+│   ├── INSTALLATION_GUIDE.md        # Detailed instructions
 └── README.md                        # This file
 
 ```

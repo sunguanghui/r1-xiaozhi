@@ -37,7 +37,7 @@
 
 ### ✅ Phase 4: Documentation
 - [x] README.md with quickstart guide
-- [x] HUONG_DAN_CAI_DAT.md (Vietnamese installation guide)
+- [x] INSTALLATION_GUIDE.md (installation guide)
 - [x] ESP32_CODE_ANALYSIS.md (protocol analysis)
 - [x] ANDROID_CLIENT_ANALYSIS.md (multi-platform comparison)
 - [x] PAIRING_FIX_SUMMARY.md (technical deep-dive)
@@ -236,7 +236,7 @@ Connection instructions:
 
 ### User-Facing Docs
 1. **README.md** - Quickstart for developers
-2. **HUONG_DAN_CAI_DAT.md** - Vietnamese installation guide
+2. **INSTALLATION_GUIDE.md** - Installation guide
 3. **README_ESP32_PAIRING.md** - Pairing user guide
 4. **TESTING_GUIDE.md** - Test cases with expected results
 
@@ -379,7 +379,7 @@ feat: UX improvements (7e81b7d) ← Current
 
 ### Documentation Index
 1. [`README.md`](README.md) - Project overview
-2. [`HUONG_DAN_CAI_DAT.md`](HUONG_DAN_CAI_DAT.md) - Installation (Vietnamese)
+2. [`INSTALLATION_GUIDE.md`](docs/INSTALLATION_GUIDE.md) - Installation (Vietnamese)
 3. [`ESP32_CODE_ANALYSIS.md`](ESP32_CODE_ANALYSIS.md) - Protocol analysis
 4. [`ANDROID_CLIENT_ANALYSIS.md`](ANDROID_CLIENT_ANALYSIS.md) - Platform comparison
 5. [`PAIRING_FIX_SUMMARY.md`](PAIRING_FIX_SUMMARY.md) - Technical analysis

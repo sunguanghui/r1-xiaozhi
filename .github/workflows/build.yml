@@ -200,7 +200,7 @@ jobs:
           ```
           
           ### 📝 Documentation
-          For detailed configuration guidelines, please refer to [HUONG_DAN_CAI_DAT.md](https://github.com/${{ github.repository }}/blob/main/HUONG_DAN_CAI_DAT.md)
+          For detailed configuration guidelines, please refer to [INSTALLATION_GUIDE.md](https://github.com/${{ github.repository }}/blob/main/docs/INSTALLATION_GUIDE.md)
           
           ### ✨ Features
           - ✅ Wake word detection

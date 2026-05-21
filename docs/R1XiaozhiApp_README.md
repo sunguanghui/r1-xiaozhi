@@ -91,7 +91,7 @@ adb logcat | grep "PAIRING CODE"
 
 ## 📖 Detailed Guide
 
-See [`HUONG_DAN_CAI_DAT.md`](../HUONG_DAN_CAI_DAT.md) for a complete guide covering:
+See [`INSTALLATION_GUIDE.md`](../docs/INSTALLATION_GUIDE.md) for a complete guide covering:
 - Setting up the development environment
 - Building from source code
 - Advanced configuration
@@ -185,7 +185,7 @@ MIT License - Free to use and modify
 
 ## 📞 Support
 
-- **Documentation**: [HUONG_DAN_CAI_DAT.md](../HUONG_DAN_CAI_DAT.md)
+- **Documentation**: [INSTALLATION_GUIDE.md](../docs/INSTALLATION_GUIDE.md)
 - **Issues**: https://github.com/xuan2261/r1-xiaozhi/issues
 - **Xiaozhi Docs**: https://stable-learn.com/en/py-xiaozhi-guide/
 

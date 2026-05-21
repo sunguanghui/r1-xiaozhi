@@ -320,7 +320,7 @@ Receive response: code="0" → Success!
 - [ESP32_CODE_ANALYSIS.md](./ESP32_CODE_ANALYSIS.md) - Detailed protocol analysis
 - [PAIRING_FIX_SUMMARY.md](./PAIRING_FIX_SUMMARY.md) - Before/after comparison
 - [ESP32_PAIRING_RESEARCH.md](./ESP32_PAIRING_RESEARCH.md) - Research notes
-- [HUONG_DAN_CAI_DAT.md](./HUONG_DAN_CAI_DAT.md) - Detailed installation guide
+- [INSTALLATION_GUIDE.md](../docs/INSTALLATION_GUIDE.md) - Detailed installation guide
 
 ## 🤝 Contributing
 
