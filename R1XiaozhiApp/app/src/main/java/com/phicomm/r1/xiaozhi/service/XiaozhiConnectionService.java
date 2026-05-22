@@ -303,11 +303,14 @@ public class XiaozhiConnectionService extends Service {
         }
         
         try {
-            URI serverUri = new URI(XiaozhiConfig.WEBSOCKET_URL);
+            // 【重磅修复 1：读取动态配置地址，而不是硬编码的 WEBSOCKET_URL】
+            XiaozhiConfig config = new XiaozhiConfig(this);
+            String targetUrl = config.getActiveUrl();
+            URI serverUri = new URI(targetUrl);
             
             // Enhanced logging for debugging
             Log.i(TAG, "=== WEBSOCKET CONNECTION ===");
-            Log.i(TAG, "URL: " + XiaozhiConfig.WEBSOCKET_URL);
+            Log.i(TAG, "URL: " + targetUrl);
             Log.i(TAG, "Token (first 30 chars): " + (accessToken.length() > 30 ? accessToken.substring(0, 30) + "..." : accessToken));
             Log.i(TAG, "Token length: " + accessToken.length());
             Log.i(TAG, "============================");
@@ -400,8 +403,8 @@ public class XiaozhiConnectionService extends Service {
                 }
             };
 
-            // Apply SSL trust manager if bypass is enabled
-            if (XiaozhiConfig.BYPASS_SSL_VALIDATION) {
+            // 【重磅修复 2：只有当协议为 wss 时，才去加载 SSL 证书信任套件！】
+            if (XiaozhiConfig.BYPASS_SSL_VALIDATION && "wss".equalsIgnoreCase(serverUri.getScheme())) {
                 try {
                     Log.i(TAG, "Applying SSL trust manager (bypass validation)");
                     webSocketClient.setSocketFactory(TrustAllCertificates.getSSLSocketFactory());
@@ -426,21 +429,6 @@ public class XiaozhiConnectionService extends Service {
     
     /**
      * Send hello message (py-xiaozhi method)
-     * Format:
-     * {
-     *   "header": {
-     *     "name": "hello",
-     *     "namespace": "ai.xiaoai.common",
-     *     "message_id": "uuid"
-     *   },
-     *   "payload": {
-     *     "device_id": "MAC_ADDRESS",
-     *     "serial_number": "SN-HASH-MAC",
-     *     "device_type": "android",
-     *     "os_version": "11",
-     *     "app_version": "1.0.0"
-     *   }
-     * }
      */
     private void sendHelloMessage() {
         try {
