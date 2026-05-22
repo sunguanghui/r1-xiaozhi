@@ -155,6 +155,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Download Release APK
       uses: actions/download-artifact@v4
       with:
         name: R1Xiaozhi-Release-APK
