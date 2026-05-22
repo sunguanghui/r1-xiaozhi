@@ -189,6 +189,29 @@ public class XiaozhiConnectionService extends Service {
     private void scheduleReconnect(final int errorCode) { /* 同原逻辑 */ }
     private void cancelRetries() { /* 同原逻辑 */ }
     public boolean isConnected() { return webSocketClient != null && webSocketClient.isOpen(); }
+
+    public void setConnectionListener(ConnectionListener listener) {
+        this.connectionListener = listener;
+    }
+
+    public boolean isActivated() {
+        return deviceActivator != null && deviceActivator.isActivated();
+    }
+
+    public void cancelActivation() {
+        if (deviceActivator != null) deviceActivator.cancelActivation();
+    }
+
+    public void disconnect() {
+        if (webSocketClient != null && webSocketClient.isOpen()) {
+            webSocketClient.close();
+        }
+    }
+
+    public void resetActivation() {
+        if (deviceActivator != null) deviceActivator.resetActivation();
+    }
+
     @Override
     public void onDestroy() { super.onDestroy(); }
 }
