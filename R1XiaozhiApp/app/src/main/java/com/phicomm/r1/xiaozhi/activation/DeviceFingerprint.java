@@ -28,6 +28,7 @@ public class DeviceFingerprint {
     private static final String KEY_MAC_ADDRESS = "mac_address";
     private static final String KEY_ACCESS_TOKEN = "access_token";
     private static final String KEY_TOKEN_TIMESTAMP = "token_timestamp";
+    private static final String KEY_VERIFICATION_CODE = "verification_code";
 
     // Token expiration: 24 hours (in milliseconds)
     private static final long TOKEN_EXPIRATION_MS = 24 * 60 * 60 * 1000;
@@ -354,6 +355,18 @@ public class DeviceFingerprint {
             .putLong(KEY_TOKEN_TIMESTAMP, currentTime)
             .apply();
         Log.i(TAG, "Access token saved with timestamp: " + currentTime);
+    }
+
+    public void setVerificationCode(String code) {
+        prefs.edit().putString(KEY_VERIFICATION_CODE, code).apply();
+    }
+
+    public String getVerificationCode() {
+        return prefs.getString(KEY_VERIFICATION_CODE, null);
+    }
+
+    public void clearVerificationCode() {
+        prefs.edit().remove(KEY_VERIFICATION_CODE).apply();
     }
     
     /**

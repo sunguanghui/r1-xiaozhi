@@ -6,6 +6,7 @@ import android.os.IBinder;
 import android.util.Log;
 
 import com.phicomm.r1.xiaozhi.config.XiaozhiConfig;
+import com.phicomm.r1.xiaozhi.activation.DeviceFingerprint;
 import com.phicomm.r1.xiaozhi.util.PairingCodeGenerator;
 
 import org.json.JSONException;
@@ -134,16 +135,19 @@ public class HTTPServerService extends Service {
     private void servePairingCode(PrintWriter writer) {
         try {
             String deviceId = PairingCodeGenerator.getDeviceId(this);
-            String pairingCode = PairingCodeGenerator.getPairingCode(this);
             boolean isPaired = PairingCodeGenerator.isPaired(this);
+            DeviceFingerprint fp = DeviceFingerprint.getInstance(this);
+            String verificationCode = isPaired ? null : fp.getVerificationCode();
 
             JSONObject response = new JSONObject();
             response.put("device_id", deviceId);
-            response.put("pairing_code", pairingCode);
             response.put("paired", isPaired);
+            if (verificationCode != null) {
+                response.put("verification_code", verificationCode);
+            }
 
             sendJsonResponse(writer, 200, response.toString());
-            Log.d(TAG, "Served pairing code: " + pairingCode);
+            Log.d(TAG, "Served pairing info, paired=" + isPaired);
 
         } catch (JSONException e) {
             Log.e(TAG, "Failed to create JSON response: " + e.getMessage());

@@ -108,6 +108,7 @@ public class DeviceActivator {
                 && !response.websocket.token.isEmpty()) {
             Log.i(TAG, "OTA returned access token directly");
             fingerprint.setActivationStatus(true);
+            fingerprint.clearVerificationCode();
             fingerprint.setAccessToken(response.websocket.token);
             notifySuccess(response.websocket.token);
             isActivating.set(false);
@@ -124,6 +125,9 @@ public class DeviceActivator {
             
             // Notify UI to display code
             notifyVerificationCode(verificationCode);
+
+            // Persist code so HTTP /pairing can expose it while waiting
+            fingerprint.setVerificationCode(verificationCode);
             
             // STEP 3: Start polling activation API
             executor.execute(new Runnable() {
@@ -185,6 +189,7 @@ public class DeviceActivator {
                         // Activation successful - user entered code on website
                         Log.i(TAG, "Activation successful!");
                         fingerprint.setActivationStatus(true);
+                        fingerprint.clearVerificationCode();
                         
                         // Get or generate access token
                         String accessToken = response.accessToken;
