@@ -72,11 +72,13 @@ jobs:
         # 3. 执行 Zipalign (优化 APK，签名必备前置步骤)
         $BUILD_TOOLS_DIR/zipalign -v -p 4 app-release-unsigned.apk app-release-aligned.apk
         
-        # 4. 执行 Apksigner (正式签名)
+        # 4. 执行 Apksigner (正式签名，强制开启 V1 签名适配 Android 5.1)
         $BUILD_TOOLS_DIR/apksigner sign --ks my-release-key.jks \
           --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
           --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
           --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+          --v1-signing-enabled true \
+          --v2-signing-enabled true \
           --out app-release-signed.apk \
           app-release-aligned.apk
           
