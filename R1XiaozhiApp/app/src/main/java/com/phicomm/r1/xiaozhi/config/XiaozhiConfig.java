@@ -31,9 +31,9 @@ public class XiaozhiConfig {
     // Default values
     // ✅ Using wss:// with SSL trust manager
     // 强制设置默认使用云端
-    public static final boolean DEFAULT_USE_CLOUD = true;
+    public static final boolean DEFAULT_USE_CLOUD = false;
     public static final String DEFAULT_CLOUD_URL = "wss://xiaozhi.me/v1/ws";
-    public static final String DEFAULT_SELF_HOSTED_URL = "ws://192.168.1.100:8080/websocket";
+    public static final String DEFAULT_SELF_HOSTED_URL = "ws://192.168.1.15:12000/websocket";
     public static final String DEFAULT_WAKE_WORD = "小智";
     public static final int DEFAULT_HTTP_PORT = 8088;
     
