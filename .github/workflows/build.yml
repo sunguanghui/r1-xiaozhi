@@ -16,36 +16,24 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
-      
+      uses: actions/checkout@v4
+
     - name: Set up JDK 8
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '8'
         distribution: 'temurin'
         cache: gradle
-        
-    - name: Remove corrupted SDK packages
+
+    - name: Remove unneeded SDK packages
       run: |
-        # Remove ALL potentially corrupted packages
+        # Remove large unneeded packages to free disk space
         rm -rf $ANDROID_HOME/system-images || true
-        rm -rf $ANDROID_HOME/platforms/android-33* || true
-        rm -rf $ANDROID_HOME/platforms/android-34* || true
-        # Keep only android-22 (our target)
-        find $ANDROID_HOME/platforms -mindepth 1 -maxdepth 1 ! -name 'android-22' -exec rm -rf {} + || true
-        
+        # Keep android-23 (compileSdkVersion 23) and remove higher unused ones
+        find $ANDROID_HOME/platforms -mindepth 1 -maxdepth 1 ! -name 'android-23' -exec rm -rf {} + || true
+
     - name: Grant execute permission for gradlew
       run: chmod +x R1XiaozhiApp/gradlew
-      
-    - name: Cache Gradle packages
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
           
     - name: Build Debug APK
       run: |
@@ -59,6 +47,11 @@ jobs:
         
     # --- 终极替换方案：使用原生脚本进行 Zipalign 和 签名 ---
     - name: Sign Release APK manually
+      if: |
+        secrets.KEYSTORE_BASE64 != '' &&
+        secrets.KEY_ALIAS != '' &&
+        secrets.KEYSTORE_PASSWORD != '' &&
+        secrets.KEY_PASSWORD != ''
       run: |
         cd R1XiaozhiApp/app/build/outputs/apk/release
         
@@ -161,9 +154,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Download Release APK
+      uses: actions/checkout@v4
       uses: actions/download-artifact@v4
       with:
         name: R1Xiaozhi-Release-APK
@@ -195,7 +186,7 @@ jobs:
           ### 🚀 Quick Start
           ```bash
           # Download the APK
-          wget [https://github.com/$](https://github.com/$){{ github.repository }}/releases/download/v${{ steps.tag_version.outputs.version }}/R1Xiaozhi-v${{ steps.tag_version.outputs.version }}-release.apk
+          wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.tag_version.outputs.version }}/R1Xiaozhi-v${{ steps.tag_version.outputs.version }}-release.apk
           
           # Install via ADB
           adb install -r R1Xiaozhi-v${{ steps.tag_version.outputs.version }}-release.apk

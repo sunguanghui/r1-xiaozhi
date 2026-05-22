@@ -5,7 +5,6 @@ import android.os.Looper;
 import android.util.Log;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -15,8 +14,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * Usage:
  * // Register listener
- * eventBus.register(StateChangedEvent.class, event -> {
- *     // Handle event on main thread
+ * eventBus.register(StateChangedEvent.class, new EventBus.EventListener<StateChangedEvent>() {
+ *     public void onEvent(StateChangedEvent event) {
+ *         // Handle event on main thread
+ *     }
  * });
  *
  * // Post event
@@ -27,7 +28,7 @@ public class EventBus {
     private static final String TAG = "EventBus";
     
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private final Map<Class<?>, List<EventListener<?>>> listeners = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Class<?>, List<EventListener<?>>> listeners = new ConcurrentHashMap<Class<?>, List<EventListener<?>>>();
     
     /**
      * Register a listener for a specific event type
@@ -37,8 +38,12 @@ public class EventBus {
      * @param listener Listener to be invoked when the event is posted
      */
     public <T> void register(Class<T> eventType, EventListener<T> listener) {
-        List<EventListener<?>> eventListeners = listeners.computeIfAbsent(
-                eventType, k -> new CopyOnWriteArrayList<>());
+        List<EventListener<?>> eventListeners = listeners.get(eventType);
+        if (eventListeners == null) {
+            List<EventListener<?>> newList = new CopyOnWriteArrayList<EventListener<?>>();
+            List<EventListener<?>> existing = listeners.putIfAbsent(eventType, newList);
+            eventListeners = existing != null ? existing : newList;
+        }
         eventListeners.add(listener);
         Log.d(TAG, "Registered listener for " + eventType.getSimpleName() +
               " (total: " + eventListeners.size() + ")");
