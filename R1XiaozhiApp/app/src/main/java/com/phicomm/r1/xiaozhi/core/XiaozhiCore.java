@@ -37,11 +37,11 @@ public class XiaozhiCore {
     private volatile boolean keepListening = false;
     private volatile boolean aecEnabled = true;
 
-    // Service references (set by services when they bind)
-    private XiaozhiConnectionService connectionService;
-    private AudioPlaybackService audioService;
-    private VoiceRecognitionService voiceService;
-    private LEDControlService ledService;
+    // Service references (volatile so threads always see the latest binding)
+    private volatile XiaozhiConnectionService connectionService;
+    private volatile AudioPlaybackService audioService;
+    private volatile VoiceRecognitionService voiceService;
+    private volatile LEDControlService ledService;
     
     // Application context
     private Context applicationContext;

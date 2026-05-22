@@ -40,13 +40,13 @@ public class VoiceRecognitionService extends Service {
     
     // Recording state
     private AudioRecord audioRecord;
-    private boolean isRecording = false;
+    private volatile boolean isRecording = false;
     private Thread recordingThread;
     private XiaozhiConfig config;
-    
+
     // Wake word detection
-    private boolean isListeningForWakeWord = true;
-    private boolean isRecordingCommand = false;
+    private volatile boolean isListeningForWakeWord = true;
+    private volatile boolean isRecordingCommand = false;
     private ByteArrayOutputStream commandAudioStream;
     
     // Energy-based Voice Activity Detection
@@ -450,15 +450,20 @@ public class VoiceRecognitionService extends Service {
      */
     public void stopRecording() {
         isRecording = false;
-        
+
         if (recordingThread != null) {
             try {
-                recordingThread.join();
+                recordingThread.join(5000);
+                if (recordingThread.isAlive()) {
+                    Log.w(TAG, "Recording thread did not stop in time, interrupting");
+                    recordingThread.interrupt();
+                }
             } catch (InterruptedException e) {
-                Log.e(TAG, "Error stopping recording thread", e);
+                Log.e(TAG, "Interrupted while stopping recording thread", e);
+                Thread.currentThread().interrupt();
             }
         }
-        
+
         if (audioRecord != null) {
             try {
                 audioRecord.stop();
@@ -468,7 +473,7 @@ public class VoiceRecognitionService extends Service {
             }
             audioRecord = null;
         }
-        
+
         Log.d(TAG, "Recording stopped");
     }
     

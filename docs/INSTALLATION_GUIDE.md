@@ -311,8 +311,8 @@ You have 2 options:
 Open the file [`XiaozhiConfig.java`](https://www.google.com/search?q=R1XiaozhiApp/app/src/main/java/com/phicomm/r1/xiaozhi/config/XiaozhiConfig.java:25) and modify:
 
 ```java
-public static final String DEFAULT_CLOUD_URL = "wss://xiaozhi.me/websocket";
-public static final String DEFAULT_SELF_HOSTED_URL = "ws://192.168.1.100:8080/websocket";
+public static final String DEFAULT_CLOUD_URL = "wss://xiaozhi.me/websocket";       // matches code
+public static final String DEFAULT_SELF_HOSTED_URL = "ws://192.168.1.100:8080/websocket"; // matches code
 public static final String DEFAULT_WAKE_WORD = "小智"; // Or "Xiao Zhi"
 
 ```

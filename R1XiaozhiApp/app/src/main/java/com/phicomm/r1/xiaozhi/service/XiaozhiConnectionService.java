@@ -14,16 +14,13 @@ import com.phicomm.r1.xiaozhi.activation.DeviceFingerprint;
 import com.phicomm.r1.xiaozhi.config.XiaozhiConfig;
 import com.phicomm.r1.xiaozhi.core.DeviceState;
 import com.phicomm.r1.xiaozhi.core.EventBus;
-import com.phicomm.r1.xiaozhi.core.ListeningMode;
 import com.phicomm.r1.xiaozhi.core.XiaozhiCore;
 import com.phicomm.r1.xiaozhi.events.ConnectionEvent;
 import com.phicomm.r1.xiaozhi.events.MessageReceivedEvent;
-import com.phicomm.r1.xiaozhi.util.ErrorCodes;
 import com.phicomm.r1.xiaozhi.util.TrustAllCertificates;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URI;
@@ -37,16 +34,16 @@ public class XiaozhiConnectionService extends Service {
     private static final int NOTIFICATION_ID = 1001;
     private static final int RECONNECT_DELAY_MS = 3000;
 
-    private WebSocketClient webSocketClient;
+    private volatile WebSocketClient webSocketClient;
     private final IBinder binder = new LocalBinder();
-    private ConnectionListener connectionListener;
+    private volatile ConnectionListener connectionListener;
     private XiaozhiCore core;
     private EventBus eventBus;
     private DeviceActivator deviceActivator;
     private DeviceFingerprint deviceFingerprint;
     private Handler retryHandler;
     private int retryCount = 0;
-    private boolean isConnecting = false;
+    private volatile boolean isConnecting = false;
 
     public class LocalBinder extends Binder {
         public XiaozhiConnectionService getService() { return XiaozhiConnectionService.this; }
@@ -90,17 +87,73 @@ public class XiaozhiConnectionService extends Service {
             if (audioData != null) sendAudioToServer(audioData);
             return START_STICKY;
         }
-
-        if (deviceActivator.isActivated()) {
-            connect();
-        } else {
-            deviceActivator.startActivation();
-        }
+        // Always go through activation check — both cloud and self-hosted proxy need a real token
+        ensureConnected();
         return START_STICKY;
     }
 
+    /**
+     * Ensure we have a valid token and are connected.
+     * The self-hosted URL (ws://192.168.1.15:12000/websocket) is a transparent nginx proxy
+     * to api.tenclass.net, so it still requires the same Bearer token as the cloud URL.
+     */
+    private void ensureConnected() {
+        String token = deviceFingerprint.getAccessToken();
+
+        if (token == null) {
+            Log.i(TAG, "No token found, starting activation");
+            startActivationFlow();
+            return;
+        }
+
+        if (deviceFingerprint.isTokenExpired()) {
+            Log.w(TAG, "Token expired, re-activating to refresh");
+            if (deviceActivator != null && deviceActivator.isActivating()) {
+                Log.d(TAG, "Activation already in progress, skipping");
+                return;
+            }
+            deviceFingerprint.setActivationStatus(false);
+            startActivationFlow();
+            return;
+        }
+
+        connect();
+    }
+
+    private void startActivationFlow() {
+        deviceActivator.setListener(new DeviceActivator.ActivationListener() {
+            @Override
+            public void onActivationStarted(String verificationCode) {
+                Log.i(TAG, "需要激活，验证码: " + verificationCode);
+                ConnectionListener l = connectionListener;
+                if (l != null) l.onActivationRequired(verificationCode);
+            }
+
+            @Override
+            public void onActivationProgress(int attempt, int maxAttempts) {
+                ConnectionListener l = connectionListener;
+                if (l != null) l.onActivationProgress(attempt, maxAttempts);
+            }
+
+            @Override
+            public void onActivationSuccess(String accessToken) {
+                Log.i(TAG, "激活成功，开始连接");
+                ConnectionListener l = connectionListener;
+                if (l != null) l.onPairingSuccess();
+                connect();
+            }
+
+            @Override
+            public void onActivationFailed(String error) {
+                Log.e(TAG, "激活失败: " + error);
+                ConnectionListener l = connectionListener;
+                if (l != null) l.onPairingFailed(error);
+            }
+        });
+        deviceActivator.startActivation();
+    }
+
     public void connect() {
-        // Prevent duplicate connections
         if (isConnecting) {
             Log.d(TAG, "Already connecting, skipping");
             return;
@@ -110,12 +163,15 @@ public class XiaozhiConnectionService extends Service {
             return;
         }
 
-        String accessToken = deviceFingerprint.getValidAccessToken();
-        if (accessToken == null) {
-            Log.e(TAG, "No valid access token");
+        // Use stored token (not getValidAccessToken which rejects expired tokens —
+        // let the server decide if the token is still acceptable)
+        String token = deviceFingerprint.getAccessToken();
+        if (token == null) {
+            Log.e(TAG, "No access token, triggering activation");
+            startActivationFlow();
             return;
         }
-        connectWithToken(accessToken);
+        connectWithToken(token);
     }
 
     private void connectWithToken(final String accessToken) {
@@ -124,34 +180,41 @@ public class XiaozhiConnectionService extends Service {
             XiaozhiConfig config = new XiaozhiConfig(this);
             URI serverUri = new URI(config.getActiveUrl());
             Map<String, String> headers = new HashMap<>();
+            // Always send Authorization — the self-hosted proxy transparently forwards it to api.tenclass.net
             headers.put("Authorization", "Bearer " + accessToken);
 
-            // FIX: capture as final local so onOpen uses THIS instance, not the field
             final WebSocketClient client = new WebSocketClient(serverUri, headers) {
                 @Override
                 public void onOpen(ServerHandshake h) {
                     Log.i(TAG, "连接成功，准备握手");
                     isConnecting = false;
-                    retryCount = 0;
+                    retryCount = 0; // reset on successful open so MAX_RETRIES counts from here
                     sendHelloMessage(this);
                 }
 
                 @Override
-                public void onMessage(String message) {
-                    handleMessage(message);
-                }
+                public void onMessage(String message) { handleMessage(message); }
 
                 @Override
-                public void onMessage(java.nio.ByteBuffer bytes) {
-                    handleBinaryMessage(bytes);
-                }
+                public void onMessage(java.nio.ByteBuffer bytes) { handleBinaryMessage(bytes); }
 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
-                    Log.w(TAG, "连接关闭: code=" + code + " reason=" + reason);
+                    Log.w(TAG, "连接关闭: code=" + code + " reason='" + reason + "' remote=" + remote);
                     isConnecting = false;
-                    if (connectionListener != null) connectionListener.onDisconnected();
-                    if (remote) scheduleReconnect();
+                    ConnectionListener l = connectionListener;
+                    if (l != null) l.onDisconnected();
+
+                    if (!remote) return; // local close, don't reconnect
+
+                    if (code == 4001 || code == 4003) {
+                        // Auth error codes — token invalid/expired, re-activate
+                        Log.w(TAG, "Token被服务器拒绝(code=" + code + ")，重新激活");
+                        deviceFingerprint.setActivationStatus(false);
+                        startActivationFlow();
+                    } else {
+                        scheduleReconnect();
+                    }
                 }
 
                 @Override
@@ -176,7 +239,6 @@ public class XiaozhiConnectionService extends Service {
         }
     }
 
-    // FIX: pass the specific client instance instead of using the field
     private void sendHelloMessage(WebSocketClient client) {
         try {
             JSONObject message = new JSONObject();
@@ -192,13 +254,12 @@ public class XiaozhiConnectionService extends Service {
             message.put("mac", deviceFingerprint.getMacAddress());
 
             client.send(message.toString());
-            Log.i(TAG, "已发送官方握手包");
+            Log.i(TAG, "已发送握手包: " + message.toString());
         } catch (Exception e) {
             Log.e(TAG, "握手发送失败", e);
         }
     }
 
-    // FIX: implement message handling - server hello response + TTS control messages
     private void handleMessage(String message) {
         Log.d(TAG, "收到消息: " + message);
         try {
@@ -207,9 +268,10 @@ public class XiaozhiConnectionService extends Service {
 
             switch (type) {
                 case "hello":
-                    // Server handshake accepted - connection is ready
                     Log.i(TAG, "握手完成，连接就绪");
-                    if (connectionListener != null) connectionListener.onConnected();
+                    retryCount = 0;
+                    ConnectionListener l = connectionListener;
+                    if (l != null) l.onConnected();
                     eventBus.post(new ConnectionEvent(true, "WebSocket connected"));
                     break;
 
@@ -220,17 +282,17 @@ public class XiaozhiConnectionService extends Service {
                 case "stt":
                     String sttText = json.optString("text", "");
                     Log.i(TAG, "识别结果: " + sttText);
-                    if (connectionListener != null) connectionListener.onMessage(sttText);
+                    ConnectionListener sl = connectionListener;
+                    if (sl != null) sl.onMessage(sttText);
                     eventBus.post(new MessageReceivedEvent(json));
                     break;
 
                 case "llm":
-                    String llmText = json.optString("text", "");
-                    Log.d(TAG, "LLM: " + llmText);
+                    Log.d(TAG, "LLM: " + json.optString("text", ""));
                     break;
 
                 default:
-                    Log.d(TAG, "未知消息类型: " + type);
+                    Log.d(TAG, "未知消息类型: " + type + " 内容: " + message);
                     break;
             }
         } catch (Exception e) {
@@ -245,28 +307,22 @@ public class XiaozhiConnectionService extends Service {
                 Log.i(TAG, "TTS 开始");
                 core.setDeviceState(DeviceState.SPEAKING);
                 break;
-
             case "stop":
                 Log.i(TAG, "TTS 结束");
                 core.setDeviceState(DeviceState.IDLE);
                 break;
-
             case "sentence_start":
-                String text = json.optString("text", "");
-                Log.i(TAG, "TTS 文本: " + text);
+                Log.i(TAG, "TTS 文本: " + json.optString("text", ""));
                 break;
-
             default:
                 break;
         }
     }
 
-    // Handle binary audio data from server (TTS audio stream)
     private void handleBinaryMessage(java.nio.ByteBuffer bytes) {
         byte[] audioData = new byte[bytes.remaining()];
         bytes.get(audioData);
         Log.d(TAG, "收到音频数据: " + audioData.length + " bytes");
-
         Intent intent = new Intent(this, AudioPlaybackService.class);
         intent.setAction(AudioPlaybackService.ACTION_PLAY_DATA);
         intent.putExtra("audio_data", audioData);
@@ -283,20 +339,29 @@ public class XiaozhiConnectionService extends Service {
         }
     }
 
-    // FIX: implement reconnect with backoff
     private void scheduleReconnect() {
         if (retryCount >= MAX_RETRIES) {
-            Log.e(TAG, "重连次数已达上限");
-            if (connectionListener != null) connectionListener.onError("Connection failed after " + MAX_RETRIES + " retries");
+            Log.w(TAG, "重连次数已达上限(" + MAX_RETRIES + ")，60秒后重置重试");
+            retryCount = 0;
+            ConnectionListener l = connectionListener;
+            if (l != null)
+                l.onError("Connection failed after " + MAX_RETRIES + " retries, will retry in 60s");
+            // Schedule a longer-interval retry so the service never goes permanently dormant
+            retryHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (!isConnected()) ensureConnected();
+                }
+            }, 60000);
             return;
         }
         retryCount++;
-        int delay = RECONNECT_DELAY_MS * retryCount;
-        Log.i(TAG, "将在 " + delay + "ms 后重连 (第 " + retryCount + " 次)");
+        int delay = Math.min(RECONNECT_DELAY_MS * retryCount, 30000);
+        Log.i(TAG, "将在 " + delay + "ms 后重连 (第 " + retryCount + "/" + MAX_RETRIES + " 次)");
         retryHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (!isConnected()) connect();
+                if (!isConnected()) ensureConnected();
             }
         }, delay);
     }
@@ -320,9 +385,7 @@ public class XiaozhiConnectionService extends Service {
 
     public void disconnect() {
         retryCount = MAX_RETRIES; // prevent auto-reconnect
-        if (webSocketClient != null) {
-            webSocketClient.close();
-        }
+        if (webSocketClient != null) webSocketClient.close();
     }
 
     public void resetActivation() {
@@ -331,7 +394,15 @@ public class XiaozhiConnectionService extends Service {
 
     @Override
     public void onDestroy() {
-        if (webSocketClient != null) webSocketClient.close();
+        retryHandler.removeCallbacksAndMessages(null);
+        WebSocketClient ws = webSocketClient;
+        if (ws != null) {
+            try {
+                ws.close();
+            } catch (Exception e) {
+                Log.e(TAG, "Error closing WebSocket", e);
+            }
+        }
         super.onDestroy();
     }
 }

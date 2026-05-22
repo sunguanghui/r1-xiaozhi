@@ -58,6 +58,10 @@ public class DeviceActivator {
     public void setListener(ActivationListener listener) {
         this.listener = listener;
     }
+
+    public boolean isActivating() {
+        return isActivating.get();
+    }
     
     /**
      * Start activation process
@@ -200,10 +204,16 @@ public class DeviceActivator {
                     
                 } catch (InterruptedException e) {
                     Log.i(TAG, "Activation interrupted");
+                    Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
                     Log.e(TAG, "Activation request failed", e);
-                    Thread.sleep(RETRY_INTERVAL_MS);
+                    try {
+                        Thread.sleep(RETRY_INTERVAL_MS);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
             }
             
@@ -267,30 +277,25 @@ public class DeviceActivator {
             conn.setDoOutput(true);
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
-            
-            // Write payload
-            OutputStream os = conn.getOutputStream();
-            os.write(payload.toString().getBytes());
-            os.flush();
-            os.close();
-            
-            // Read response
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(payload.toString().getBytes("UTF-8"));
+                os.flush();
+            }
+
             int statusCode = conn.getResponseCode();
-            
-            BufferedReader reader;
-            if (statusCode >= 200 && statusCode < 300) {
-                reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            } else {
-                reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
-            }
-            
+
             StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                response.append(line);
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    statusCode >= 200 && statusCode < 300
+                        ? conn.getInputStream()
+                        : conn.getErrorStream(), "UTF-8"))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
             }
-            reader.close();
-            
+
             Log.d(TAG, "Response (" + statusCode + "): " + response);
             
             // Parse response

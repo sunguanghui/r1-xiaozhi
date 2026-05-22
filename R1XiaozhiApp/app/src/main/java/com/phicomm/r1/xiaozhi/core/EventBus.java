@@ -37,13 +37,10 @@ public class EventBus {
      * @param listener Listener to be invoked when the event is posted
      */
     public <T> void register(Class<T> eventType, EventListener<T> listener) {
-        List<EventListener<?>> eventListeners = listeners.get(eventType);
-        if (eventListeners == null) {
-            eventListeners = new CopyOnWriteArrayList<>();
-            listeners.put(eventType, eventListeners);
-        }
+        List<EventListener<?>> eventListeners = listeners.computeIfAbsent(
+                eventType, k -> new CopyOnWriteArrayList<>());
         eventListeners.add(listener);
-        Log.d(TAG, "Registered listener for " + eventType.getSimpleName() + 
+        Log.d(TAG, "Registered listener for " + eventType.getSimpleName() +
               " (total: " + eventListeners.size() + ")");
     }
     

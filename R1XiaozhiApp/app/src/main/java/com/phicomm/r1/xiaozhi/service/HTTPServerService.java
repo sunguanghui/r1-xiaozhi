@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.phicomm.r1.xiaozhi.config.XiaozhiConfig;
 import com.phicomm.r1.xiaozhi.util.PairingCodeGenerator;
 
 import org.json.JSONException;
@@ -18,23 +19,32 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
- * Simple HTTP Server to expose the pairing code via REST API
- * Per ESP32: Code generated LOCAL, no async API calls
+ * Simple HTTP Server to expose device status and remote control via REST API
+ * Port is read from XiaozhiConfig (default 8088)
+ *
+ * Endpoints:
+ *   GET  /pairing          - pairing code and device ID
+ *   GET  /pairing-code     - alias for /pairing
+ *   GET  /status           - pairing and connection status
+ *   GET  /start            - start voice recognition and connection services
+ *   GET  /stop             - stop voice recognition and connection services
+ *   GET  /config           - current configuration
+ *   POST /reset-pairing    - reset pairing and return new code
+ *   POST /reset            - alias for /reset-pairing
  */
 public class HTTPServerService extends Service {
-    
+
     private static final String TAG = "HTTPServer";
-    private static final int PORT = 8080;
-    
+
     private ServerSocket serverSocket;
     private Thread serverThread;
-    private boolean isRunning = false;
-    
+    private volatile boolean isRunning = false;
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
-    
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (!isRunning) {
@@ -42,16 +52,17 @@ public class HTTPServerService extends Service {
         }
         return START_STICKY;
     }
-    
+
     private void startServer() {
         serverThread = new Thread(new Runnable() {
             @Override
             public void run() {
+                int port = new XiaozhiConfig(HTTPServerService.this).getHttpServerPort();
                 try {
-                    serverSocket = new ServerSocket(PORT);
+                    serverSocket = new ServerSocket(port);
                     isRunning = true;
-                    Log.i(TAG, "HTTP Server started on port " + PORT);
-                    
+                    Log.i(TAG, "HTTP Server started on port " + port);
+
                     while (isRunning && !serverSocket.isClosed()) {
                         try {
                             Socket clientSocket = serverSocket.accept();
@@ -62,9 +73,9 @@ public class HTTPServerService extends Service {
                             }
                         }
                     }
-                    
+
                 } catch (IOException e) {
-                    Log.e(TAG, "Failed to start server: " + e.getMessage(), e);
+                    Log.e(TAG, "Failed to start server on port " + port + ": " + e.getMessage(), e);
                 } finally {
                     isRunning = false;
                 }
@@ -72,125 +83,148 @@ public class HTTPServerService extends Service {
         });
         serverThread.start();
     }
-    
+
     private void handleClient(Socket clientSocket) {
-        try {
-            BufferedReader reader = new BufferedReader(
-                new InputStreamReader(clientSocket.getInputStream()));
-            PrintWriter writer = new PrintWriter(clientSocket.getOutputStream(), true);
-            
-            // Read request line
+        try (Socket socket = clientSocket;
+             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)) {
+
             String requestLine = reader.readLine();
-            if (requestLine == null) {
-                clientSocket.close();
-                return;
-            }
-            
+            if (requestLine == null) return;
+
             Log.d(TAG, "Request: " + requestLine);
-            
-            // Skip headers
+
             String line;
             while ((line = reader.readLine()) != null && !line.isEmpty()) {
-                // Skip
+                // skip headers
             }
-            
-            // Parse request
+
             String[] parts = requestLine.split(" ");
             if (parts.length < 2) {
                 sendResponse(writer, 400, "Bad Request");
-                clientSocket.close();
                 return;
             }
-            
+
             String method = parts[0];
-            String path = parts[1];
-            
-            // Route request
-            if ("GET".equals(method) && "/pairing-code".equals(path)) {
+            // strip query string for routing
+            String path = parts[1].split("\\?")[0];
+
+            if ("GET".equals(method) && ("/pairing".equals(path) || "/pairing-code".equals(path))) {
                 servePairingCode(writer);
             } else if ("GET".equals(method) && "/status".equals(path)) {
                 serveStatus(writer);
-            } else if ("POST".equals(method) && "/reset".equals(path)) {
+            } else if ("GET".equals(method) && "/start".equals(path)) {
+                serveStart(writer);
+            } else if ("GET".equals(method) && "/stop".equals(path)) {
+                serveStop(writer);
+            } else if ("GET".equals(method) && "/config".equals(path)) {
+                serveConfig(writer);
+            } else if ("POST".equals(method) && ("/reset-pairing".equals(path) || "/reset".equals(path))) {
                 serveResetPairing(writer);
             } else {
                 sendResponse(writer, 404, "Not Found");
             }
-            
-            clientSocket.close();
-            
+
         } catch (IOException e) {
             Log.e(TAG, "Error handling client: " + e.getMessage());
         }
     }
-    
-    /**
-     * GET /pairing-code
-     * Returns the LOCAL pairing code (no API call)
-     */
+
+    /** GET /pairing, /pairing-code */
     private void servePairingCode(PrintWriter writer) {
         try {
             String deviceId = PairingCodeGenerator.getDeviceId(this);
             String pairingCode = PairingCodeGenerator.getPairingCode(this);
             boolean isPaired = PairingCodeGenerator.isPaired(this);
-            
+
             JSONObject response = new JSONObject();
             response.put("device_id", deviceId);
             response.put("pairing_code", pairingCode);
             response.put("paired", isPaired);
-            
+
             sendJsonResponse(writer, 200, response.toString());
             Log.d(TAG, "Served pairing code: " + pairingCode);
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Failed to create JSON response: " + e.getMessage());
             sendResponse(writer, 500, "Internal Server Error");
         }
     }
-    
-    /**
-     * GET /status
-     * Returns the pairing status
-     */
+
+    /** GET /status */
     private void serveStatus(PrintWriter writer) {
         try {
             boolean isPaired = PairingCodeGenerator.isPaired(this);
             String deviceId = PairingCodeGenerator.getDeviceId(this);
-            
+
             JSONObject response = new JSONObject();
+            response.put("status", isPaired ? "paired" : "not_paired");
             response.put("paired", isPaired);
             response.put("device_id", deviceId);
-            response.put("status", isPaired ? "paired" : "not_paired");
-            
+
             sendJsonResponse(writer, 200, response.toString());
-            Log.d(TAG, "Served status: " + (isPaired ? "paired" : "not_paired"));
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Failed to create JSON response: " + e.getMessage());
             sendResponse(writer, 500, "Internal Server Error");
         }
     }
-    
-    /**
-     * POST /reset
-     * Reset pairing status - simple, NO async
-     */
-    private void serveResetPairing(PrintWriter writer) {
-        PairingCodeGenerator.resetPairing(this);
-        
+
+    /** GET /start — start VoiceRecognitionService and XiaozhiConnectionService */
+    private void serveStart(PrintWriter writer) {
+        startService(new Intent(this, VoiceRecognitionService.class));
+        startService(new Intent(this, XiaozhiConnectionService.class));
+        Log.i(TAG, "Services started via HTTP");
         try {
             JSONObject response = new JSONObject();
-            response.put("success", true);
-            response.put("message", "Pairing reset successfully");
-            
+            response.put("status", "started");
             sendJsonResponse(writer, 200, response.toString());
-            Log.i(TAG, "Pairing reset via HTTP");
-            
+        } catch (JSONException e) {
+            sendResponse(writer, 500, "Internal Server Error");
+        }
+    }
+
+    /** GET /stop — stop VoiceRecognitionService and XiaozhiConnectionService */
+    private void serveStop(PrintWriter writer) {
+        stopService(new Intent(this, VoiceRecognitionService.class));
+        stopService(new Intent(this, XiaozhiConnectionService.class));
+        Log.i(TAG, "Services stopped via HTTP");
+        try {
+            JSONObject response = new JSONObject();
+            response.put("status", "stopped");
+            sendJsonResponse(writer, 200, response.toString());
+        } catch (JSONException e) {
+            sendResponse(writer, 500, "Internal Server Error");
+        }
+    }
+
+    /** GET /config — return current XiaozhiConfig as JSON */
+    private void serveConfig(PrintWriter writer) {
+        try {
+            sendJsonResponse(writer, 200, new XiaozhiConfig(this).exportConfig());
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to serve config: " + e.getMessage());
+            sendResponse(writer, 500, "Internal Server Error");
+        }
+    }
+
+    /** POST /reset-pairing, /reset */
+    private void serveResetPairing(PrintWriter writer) {
+        PairingCodeGenerator.resetPairing(this);
+        String newCode = PairingCodeGenerator.getPairingCode(this);
+        Log.i(TAG, "Pairing reset via HTTP, new code: " + newCode);
+        try {
+            JSONObject response = new JSONObject();
+            response.put("status", "success");
+            response.put("new_pairing_code", newCode);
+            response.put("message", "Pairing reset successfully");
+            sendJsonResponse(writer, 200, response.toString());
         } catch (JSONException e) {
             Log.e(TAG, "Failed to create JSON response: " + e.getMessage());
             sendResponse(writer, 500, "Internal Server Error");
         }
     }
-    
+
     private void sendResponse(PrintWriter writer, int statusCode, String statusMessage) {
         writer.println("HTTP/1.1 " + statusCode + " " + statusMessage);
         writer.println("Content-Type: text/plain");
@@ -198,24 +232,24 @@ public class HTTPServerService extends Service {
         writer.println();
         writer.println(statusMessage);
     }
-    
+
     private void sendJsonResponse(PrintWriter writer, int statusCode, String json) {
         String statusMessage = statusCode == 200 ? "OK" : "Error";
         writer.println("HTTP/1.1 " + statusCode + " " + statusMessage);
         writer.println("Content-Type: application/json");
-        writer.println("Content-Length: " + json.length());
+        writer.println("Content-Length: " + json.getBytes().length);
         writer.println("Connection: close");
         writer.println();
         writer.println(json);
     }
-    
+
     @Override
     public void onDestroy() {
         stopServer();
         super.onDestroy();
         Log.i(TAG, "HTTP Server stopped");
     }
-    
+
     private void stopServer() {
         isRunning = false;
         if (serverSocket != null && !serverSocket.isClosed()) {

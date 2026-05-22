@@ -87,7 +87,7 @@ public class XiaozhiApiClient {
     private String post(String urlString, String body) throws Exception {
         URL url = new URL(urlString);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        
+
         try {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
@@ -95,31 +95,29 @@ public class XiaozhiApiClient {
             conn.setConnectTimeout(TIMEOUT);
             conn.setReadTimeout(TIMEOUT);
             conn.setDoOutput(true);
-            
-            // Write body
-            OutputStream os = conn.getOutputStream();
-            os.write(body.getBytes("UTF-8"));
-            os.flush();
-            os.close();
-            
-            // Read response
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(body.getBytes("UTF-8"));
+                os.flush();
+            }
+
             int responseCode = conn.getResponseCode();
-            if (responseCode != HttpURLConnection.HTTP_OK && 
+            if (responseCode != HttpURLConnection.HTTP_OK &&
                 responseCode != HttpURLConnection.HTTP_CREATED) {
                 throw new Exception("HTTP error code: " + responseCode);
             }
-            
-            BufferedReader br = new BufferedReader(
-                new InputStreamReader(conn.getInputStream(), "UTF-8"));
+
             StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) {
-                response.append(line);
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), "UTF-8"))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    response.append(line);
+                }
             }
-            br.close();
-            
+
             return response.toString();
-            
+
         } finally {
             conn.disconnect();
         }
@@ -131,30 +129,29 @@ public class XiaozhiApiClient {
     private String get(String urlString) throws Exception {
         URL url = new URL(urlString);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        
+
         try {
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
             conn.setConnectTimeout(TIMEOUT);
             conn.setReadTimeout(TIMEOUT);
-            
-            // Read response
+
             int responseCode = conn.getResponseCode();
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 throw new Exception("HTTP error code: " + responseCode);
             }
-            
-            BufferedReader br = new BufferedReader(
-                new InputStreamReader(conn.getInputStream(), "UTF-8"));
+
             StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) {
-                response.append(line);
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), "UTF-8"))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    response.append(line);
+                }
             }
-            br.close();
-            
+
             return response.toString();
-            
+
         } finally {
             conn.disconnect();
         }
