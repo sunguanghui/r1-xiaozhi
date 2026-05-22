@@ -208,8 +208,15 @@ public class XiaozhiConnectionService extends Service {
                     if (!remote) return; // local close, don't reconnect
 
                     if (code == 4001 || code == 4003) {
-                        // Auth error codes — token invalid/expired, re-activate
+                        // Explicit auth rejection — re-activate
                         Log.w(TAG, "Token被服务器拒绝(code=" + code + ")，重新激活");
+                        deviceFingerprint.setActivationStatus(false);
+                        startActivationFlow();
+                    } else if (code == 1000 && retryCount == 0) {
+                        // Server closed immediately after hello with code=1000:
+                        // this means the token was rejected (server uses 1000 instead of 4001).
+                        // Only treat first occurrence as auth failure to avoid infinite re-activation.
+                        Log.w(TAG, "服务器立即关闭连接(code=1000)，可能token无效，重新激活");
                         deviceFingerprint.setActivationStatus(false);
                         startActivationFlow();
                     } else {

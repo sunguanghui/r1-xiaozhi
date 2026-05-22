@@ -103,6 +103,17 @@ public class DeviceActivator {
      * STEP 2: Parse activation data or proceed if already activated
      */
     private void handleOTAResponse(OTAConfigManager.OTAResponse response) {
+        // If OTA returned a websocket token directly, save it and connect
+        if (response.websocket != null && response.websocket.token != null
+                && !response.websocket.token.isEmpty()) {
+            Log.i(TAG, "OTA returned access token directly");
+            fingerprint.setActivationStatus(true);
+            fingerprint.setAccessToken(response.websocket.token);
+            notifySuccess(response.websocket.token);
+            isActivating.set(false);
+            return;
+        }
+
         if (response.activation != null) {
             // Device needs activation - got challenge + code from server
             serverChallenge = response.activation.challenge;
