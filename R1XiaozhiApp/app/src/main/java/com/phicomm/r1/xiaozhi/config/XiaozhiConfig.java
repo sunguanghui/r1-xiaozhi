@@ -45,7 +45,7 @@ public class XiaozhiConfig {
     
     // Use Cloud API (Primary)
     public boolean isUseCloud() {
-        return prefs.getBoolean(KEY_USE_CLOUD, true);
+        return prefs.getBoolean(KEY_USE_CLOUD, DEFAULT_USE_CLOUD);
     }
     
     public void setUseCloud(boolean useCloud) {
