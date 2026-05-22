@@ -28,10 +28,10 @@ public class BootReceiver extends BroadcastReceiver {
             
             // Only auto-start if user has enabled the option
             if (config.isAutoStart()) {
-                // Start LED service first
-                Intent ledIntent = new Intent(context, LEDControlService.class);
-                ledIntent.setAction(LEDControlService.ACTION_SET_IDLE);
-                context.startService(ledIntent);
+                // // Start LED service first
+                // Intent ledIntent = new Intent(context, LEDControlService.class);
+                // ledIntent.setAction(LEDControlService.ACTION_SET_IDLE);
+                // context.startService(ledIntent);
                 
                 // Start Xiaozhi connection service
                 Intent xiaozhiIntent = new Intent(context, XiaozhiConnectionService.class);
