@@ -7,13 +7,13 @@ on:
       - 'v*'
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Allows manual triggering
+  workflow_dispatch:
 
 jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -27,45 +27,43 @@ jobs:
 
     - name: Remove unneeded SDK packages
       run: |
-        # Remove large unneeded packages to free disk space
         rm -rf $ANDROID_HOME/system-images || true
-        # Keep android-23 (compileSdkVersion 23) and remove higher unused ones
+        # Keep android-23 (compileSdkVersion 23), remove unneeded higher versions
         find $ANDROID_HOME/platforms -mindepth 1 -maxdepth 1 ! -name 'android-23' -exec rm -rf {} + || true
 
     - name: Grant execute permission for gradlew
       run: chmod +x R1XiaozhiApp/gradlew
-          
+
     - name: Build Debug APK
       run: |
         cd R1XiaozhiApp
         ./gradlew assembleDebug --stacktrace
-        
+
     - name: Build Release APK
       run: |
         cd R1XiaozhiApp
         ./gradlew assembleRelease --stacktrace
-        
-    # --- 终极替换方案：使用原生脚本进行 Zipalign 和 签名 ---
+
     - name: Sign Release APK manually
-      if: |
-        secrets.KEYSTORE_BASE64 != '' &&
-        secrets.KEY_ALIAS != '' &&
-        secrets.KEYSTORE_PASSWORD != '' &&
-        secrets.KEY_PASSWORD != ''
       run: |
+        # Skip if signing secrets are not configured
+        if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ] || \
+           [ -z "${{ secrets.KEY_ALIAS }}" ] || \
+           [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ] || \
+           [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
+          echo "Signing secrets not configured, skipping signing step."
+          exit 0
+        fi
+
         cd R1XiaozhiApp/app/build/outputs/apk/release
-        
-        # 1. 从 Secrets 还原 Keystore 文件
+
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > my-release-key.jks
-        
-        # 2. 自动寻找系统中最新版本的 build-tools 目录
+
         BUILD_TOOLS_DIR=$(ls -1d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
         echo "Using build tools from: $BUILD_TOOLS_DIR"
-        
-        # 3. 执行 Zipalign (优化 APK，签名必备前置步骤)
+
         $BUILD_TOOLS_DIR/zipalign -v -p 4 app-release-unsigned.apk app-release-aligned.apk
-        
-        # 4. 执行 Apksigner (正式签名，强制开启 V1 签名适配 Android 5.1)
+
         $BUILD_TOOLS_DIR/apksigner sign --ks my-release-key.jks \
           --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
           --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
@@ -74,11 +72,9 @@ jobs:
           --v2-signing-enabled true \
           --out app-release-signed.apk \
           app-release-aligned.apk
-          
-        # 5. 清理临时文件 (修复：移除了错误重命名为 unsigned 的逻辑，保留 signed 状态)
-        rm -f my-release-key.jks
-        rm -f app-release-aligned.apk
-        
+
+        rm -f my-release-key.jks app-release-aligned.apk
+
     - name: Get version info
       id: version
       run: |
@@ -88,55 +84,44 @@ jobs:
         echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
         echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
         echo "Version: $VERSION_NAME (Code: $VERSION_CODE)"
-        
-    - name: List APK files
-      run: |
-        cd R1XiaozhiApp/app/build/outputs/apk
-        echo "=== Debug APKs ==="
-        ls -la debug/ || echo "No debug folder"
-        echo "=== Release APKs ==="
-        ls -la release/ || echo "No release folder"
-        echo "=== All APK structure ==="
-        find . -name "*.apk" -type f
-        
-    # --- 修改：重命名签过名的 APK，并清理未签名的残留 ---
+
     - name: Rename APKs
       run: |
         cd R1XiaozhiApp/app/build/outputs/apk
-        # Rename debug if exists
         if [ -f "debug/app-debug.apk" ]; then
           mv debug/app-debug.apk debug/R1Xiaozhi-v${{ steps.version.outputs.version_name }}-debug.apk
         fi
-        
-        # 查找签名后的 APK (这里会自动找到上面生成的 app-release-signed.apk)
         SIGNED_APK=$(find release -name "*signed.apk" -o -name "app-release.apk" | head -n 1)
         if [ -n "$SIGNED_APK" ]; then
           mv "$SIGNED_APK" release/R1Xiaozhi-v${{ steps.version.outputs.version_name }}-release.apk
         fi
-        
-        # 删除未签名的 APK，防止被同时上传到 Artifacts 中
         rm -f release/*unsigned*.apk || true
-        
+
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: R1Xiaozhi-Debug-APK
         path: R1XiaozhiApp/app/build/outputs/apk/debug/*.apk
         retention-days: 30
-        
+
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
         name: R1Xiaozhi-Release-APK
         path: R1XiaozhiApp/app/build/outputs/apk/release/*.apk
         retention-days: 90
-        
+
     - name: Generate checksum
       run: |
         cd R1XiaozhiApp/app/build/outputs/apk/release
-        sha256sum *.apk > checksums.txt
-        cat checksums.txt
-        
+        if ls *.apk 1>/dev/null 2>&1; then
+          sha256sum *.apk > checksums.txt
+          cat checksums.txt
+        else
+          echo "No APK files found, skipping checksum"
+          touch checksums.txt
+        fi
+
     - name: Upload checksum
       uses: actions/upload-artifact@v4
       with:
@@ -148,10 +133,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    
+
     permissions:
       contents: write
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -161,52 +146,37 @@ jobs:
       with:
         name: R1Xiaozhi-Release-APK
         path: release-apk
-        
+
     - name: Download Checksums
       uses: actions/download-artifact@v4
       with:
         name: Checksums
         path: checksums
-        
+
     - name: Get version from tag
       id: tag_version
       run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-      
+
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
         name: Release ${{ steps.tag_version.outputs.version }}
         body: |
           ## Xiaozhi Voice Assistant for Phicomm R1
-          
-          ### 📦 Version: ${{ steps.tag_version.outputs.version }}
-          
-          ### 📥 Download
+
+          ### Version: ${{ steps.tag_version.outputs.version }}
+
+          ### Download
           - **Release APK**: Production-ready build, optimized and minified.
           - **Checksums**: SHA-256 file hashes to verify data integrity.
-          
-          ### 🚀 Quick Start
+
+          ### Quick Start
           ```bash
-          # Download the APK
-          wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.tag_version.outputs.version }}/R1Xiaozhi-v${{ steps.tag_version.outputs.version }}-release.apk
-          
-          # Install via ADB
           adb install -r R1Xiaozhi-v${{ steps.tag_version.outputs.version }}-release.apk
           ```
-          
-          ### 📝 Documentation
-          For detailed configuration guidelines, please refer to [INSTALLATION_GUIDE.md](https://github.com/${{ github.repository }}/blob/main/docs/INSTALLATION_GUIDE.md)
-          
-          ### ✨ Features
-          - ✅ Wake word detection
-          - ✅ Xiaozhi Cloud & Self-hosted support
-          - ✅ Auto-fallback mechanism
-          - ✅ LED status indicators
-          - ✅ Auto-start on boot
-          
-          ---
-          
-          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...v${{ steps.tag_version.outputs.version }}
+
+          ### Documentation
+          See [INSTALLATION_GUIDE.md](https://github.com/${{ github.repository }}/blob/main/docs/INSTALLATION_GUIDE.md)
         files: |
           release-apk/*.apk
           checksums/checksums.txt
@@ -220,17 +190,16 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
     - name: Build Success
       if: needs.build.result == 'success'
       run: |
-        echo "✅ Build completed successfully!"
+        echo "Build completed successfully!"
         echo "APK artifacts are available in the Actions tab"
-        
+
     - name: Build Failed
       if: needs.build.result == 'failure'
       run: |
-        echo "❌ Build failed!"
-        echo "Check the logs for details"
+        echo "Build failed! Check the logs for details"
         exit 1
