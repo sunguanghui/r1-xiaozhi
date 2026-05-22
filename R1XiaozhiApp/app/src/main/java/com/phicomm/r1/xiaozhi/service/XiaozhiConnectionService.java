@@ -26,23 +26,16 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
-import javax.net.ssl.SSLParameters;
-
-/**
- * 官方协议适配版 XiaozhiConnectionService
- */
 public class XiaozhiConnectionService extends Service {
 
     private static final String TAG = "XiaozhiConnection";
-    private static final int MAX_RETRIES = 3;
+    private static final int MAX_RETRIES = 5;
     private static final int NOTIFICATION_ID = 1001;
+    private static final int RECONNECT_DELAY_MS = 3000;
 
     private WebSocketClient webSocketClient;
     private final IBinder binder = new LocalBinder();
@@ -53,12 +46,12 @@ public class XiaozhiConnectionService extends Service {
     private DeviceFingerprint deviceFingerprint;
     private Handler retryHandler;
     private int retryCount = 0;
-    private boolean isRetrying = false;
-    
+    private boolean isConnecting = false;
+
     public class LocalBinder extends Binder {
         public XiaozhiConnectionService getService() { return XiaozhiConnectionService.this; }
     }
-    
+
     public interface ConnectionListener {
         void onConnected();
         void onDisconnected();
@@ -73,7 +66,6 @@ public class XiaozhiConnectionService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        // 保持前台服务
         Intent notificationIntent = new Intent(this, com.phicomm.r1.xiaozhi.ui.MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
         Notification notification = new Notification.Builder(this)
@@ -83,23 +75,22 @@ public class XiaozhiConnectionService extends Service {
             .build();
         startForeground(NOTIFICATION_ID, notification);
 
+        retryHandler = new Handler();
         core = XiaozhiCore.getInstance();
         eventBus = core.getEventBus();
         deviceFingerprint = DeviceFingerprint.getInstance(this);
         deviceActivator = new DeviceActivator(this);
         core.setConnectionService(this);
     }
-    
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        retryHandler = new Handler();
         if (intent != null && "SEND_AUDIO".equals(intent.getAction())) {
             byte[] audioData = intent.getByteArrayExtra("audio_data");
-            if (audioData != null) sendAudioToServer(audioData, 16000, 1);
+            if (audioData != null) sendAudioToServer(audioData);
             return START_STICKY;
         }
-        
-        // 自动激活逻辑
+
         if (deviceActivator.isActivated()) {
             connect();
         } else {
@@ -109,50 +100,84 @@ public class XiaozhiConnectionService extends Service {
     }
 
     public void connect() {
-        if (webSocketClient != null && webSocketClient.isOpen()) return;
+        // Prevent duplicate connections
+        if (isConnecting) {
+            Log.d(TAG, "Already connecting, skipping");
+            return;
+        }
+        if (webSocketClient != null && webSocketClient.isOpen()) {
+            Log.d(TAG, "Already connected, skipping");
+            return;
+        }
+
         String accessToken = deviceFingerprint.getValidAccessToken();
-        if (accessToken != null) connectWithToken(accessToken);
+        if (accessToken == null) {
+            Log.e(TAG, "No valid access token");
+            return;
+        }
+        connectWithToken(accessToken);
     }
-    
+
     private void connectWithToken(final String accessToken) {
+        isConnecting = true;
         try {
             XiaozhiConfig config = new XiaozhiConfig(this);
             URI serverUri = new URI(config.getActiveUrl());
             Map<String, String> headers = new HashMap<>();
             headers.put("Authorization", "Bearer " + accessToken);
-            
-            webSocketClient = new WebSocketClient(serverUri, headers) {
+
+            // FIX: capture as final local so onOpen uses THIS instance, not the field
+            final WebSocketClient client = new WebSocketClient(serverUri, headers) {
                 @Override
                 public void onOpen(ServerHandshake h) {
                     Log.i(TAG, "连接成功，准备握手");
-                    sendHelloMessage();
+                    isConnecting = false;
+                    retryCount = 0;
+                    sendHelloMessage(this);
                 }
 
                 @Override
-                public void onMessage(String message) { handleMessage(message); }
-                
+                public void onMessage(String message) {
+                    handleMessage(message);
+                }
+
                 @Override
                 public void onMessage(java.nio.ByteBuffer bytes) {
-                    // 官方协议音频回传处理
-                    Log.d(TAG, "收到二进制音频数据: " + bytes.remaining());
+                    handleBinaryMessage(bytes);
                 }
 
                 @Override
-                public void onClose(int c, String r, boolean rem) { if (rem) scheduleReconnect(ErrorCodes.WEBSOCKET_ERROR); }
-                
+                public void onClose(int code, String reason, boolean remote) {
+                    Log.w(TAG, "连接关闭: code=" + code + " reason=" + reason);
+                    isConnecting = false;
+                    if (connectionListener != null) connectionListener.onDisconnected();
+                    if (remote) scheduleReconnect();
+                }
+
                 @Override
-                public void onError(Exception ex) { scheduleReconnect(ErrorCodes.WEBSOCKET_ERROR); }
+                public void onError(Exception ex) {
+                    Log.e(TAG, "WebSocket错误", ex);
+                    isConnecting = false;
+                    scheduleReconnect();
+                }
             };
 
+            webSocketClient = client;
+
             if (XiaozhiConfig.BYPASS_SSL_VALIDATION && "wss".equalsIgnoreCase(serverUri.getScheme())) {
-                webSocketClient.setSocketFactory(TrustAllCertificates.getSSLSocketFactory());
+                client.setSocketFactory(TrustAllCertificates.getSSLSocketFactory());
             }
-            webSocketClient.connect();
-        } catch (Exception e) { Log.e(TAG, "连接错误", e); }
+            client.connect();
+            Log.i(TAG, "正在连接: " + serverUri);
+        } catch (Exception e) {
+            Log.e(TAG, "连接错误", e);
+            isConnecting = false;
+            scheduleReconnect();
+        }
     }
 
-    // 核心修改：官方协议握手包
-    private void sendHelloMessage() {
+    // FIX: pass the specific client instance instead of using the field
+    private void sendHelloMessage(WebSocketClient client) {
         try {
             JSONObject message = new JSONObject();
             message.put("type", "hello");
@@ -166,28 +191,119 @@ public class XiaozhiConnectionService extends Service {
             message.put("audio_params", audioParams);
             message.put("mac", deviceFingerprint.getMacAddress());
 
-            webSocketClient.send(message.toString());
+            client.send(message.toString());
             Log.i(TAG, "已发送官方握手包");
-        } catch (Exception e) { Log.e(TAG, "握手发送失败", e); }
+        } catch (Exception e) {
+            Log.e(TAG, "握手发送失败", e);
+        }
     }
 
-    // 核心修改：发送二进制音频流
-    private void sendAudioToServer(byte[] audioData, int sampleRate, int channels) {
+    // FIX: implement message handling - server hello response + TTS control messages
+    private void handleMessage(String message) {
+        Log.d(TAG, "收到消息: " + message);
+        try {
+            JSONObject json = new JSONObject(message);
+            String type = json.optString("type", "");
+
+            switch (type) {
+                case "hello":
+                    // Server handshake accepted - connection is ready
+                    Log.i(TAG, "握手完成，连接就绪");
+                    if (connectionListener != null) connectionListener.onConnected();
+                    eventBus.post(new ConnectionEvent(true, "WebSocket connected"));
+                    break;
+
+                case "tts":
+                    handleTTSMessage(json);
+                    break;
+
+                case "stt":
+                    String sttText = json.optString("text", "");
+                    Log.i(TAG, "识别结果: " + sttText);
+                    if (connectionListener != null) connectionListener.onMessage(sttText);
+                    eventBus.post(new MessageReceivedEvent(json));
+                    break;
+
+                case "llm":
+                    String llmText = json.optString("text", "");
+                    Log.d(TAG, "LLM: " + llmText);
+                    break;
+
+                default:
+                    Log.d(TAG, "未知消息类型: " + type);
+                    break;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "消息解析失败: " + message, e);
+        }
+    }
+
+    private void handleTTSMessage(JSONObject json) {
+        String state = json.optString("state", "");
+        switch (state) {
+            case "start":
+                Log.i(TAG, "TTS 开始");
+                core.setDeviceState(DeviceState.SPEAKING);
+                break;
+
+            case "stop":
+                Log.i(TAG, "TTS 结束");
+                core.setDeviceState(DeviceState.IDLE);
+                break;
+
+            case "sentence_start":
+                String text = json.optString("text", "");
+                Log.i(TAG, "TTS 文本: " + text);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    // Handle binary audio data from server (TTS audio stream)
+    private void handleBinaryMessage(java.nio.ByteBuffer bytes) {
+        byte[] audioData = new byte[bytes.remaining()];
+        bytes.get(audioData);
+        Log.d(TAG, "收到音频数据: " + audioData.length + " bytes");
+
+        Intent intent = new Intent(this, AudioPlaybackService.class);
+        intent.setAction(AudioPlaybackService.ACTION_PLAY_DATA);
+        intent.putExtra("audio_data", audioData);
+        startService(intent);
+    }
+
+    private void sendAudioToServer(byte[] audioData) {
         if (webSocketClient == null || !webSocketClient.isOpen()) return;
         try {
-            Log.i(TAG, "发送原始二进制音频: " + audioData.length + " bytes");
             webSocketClient.send(audioData);
-        } catch (Exception e) { Log.e(TAG, "音频发送失败", e); }
+            Log.d(TAG, "发送音频: " + audioData.length + " bytes");
+        } catch (Exception e) {
+            Log.e(TAG, "音频发送失败", e);
+        }
     }
 
-    private void handleMessage(String message) { /* 同原逻辑 */ }
-    private void handleTTSMessage(JSONObject json) { /* 同原逻辑 */ }
-    
+    // FIX: implement reconnect with backoff
+    private void scheduleReconnect() {
+        if (retryCount >= MAX_RETRIES) {
+            Log.e(TAG, "重连次数已达上限");
+            if (connectionListener != null) connectionListener.onError("Connection failed after " + MAX_RETRIES + " retries");
+            return;
+        }
+        retryCount++;
+        int delay = RECONNECT_DELAY_MS * retryCount;
+        Log.i(TAG, "将在 " + delay + "ms 后重连 (第 " + retryCount + " 次)");
+        retryHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (!isConnected()) connect();
+            }
+        }, delay);
+    }
+
     @Override
     public IBinder onBind(Intent intent) { return binder; }
-    
-    private void scheduleReconnect(final int errorCode) { /* 同原逻辑 */ }
-    private void cancelRetries() { /* 同原逻辑 */ }
+
     public boolean isConnected() { return webSocketClient != null && webSocketClient.isOpen(); }
 
     public void setConnectionListener(ConnectionListener listener) {
@@ -203,7 +319,8 @@ public class XiaozhiConnectionService extends Service {
     }
 
     public void disconnect() {
-        if (webSocketClient != null && webSocketClient.isOpen()) {
+        retryCount = MAX_RETRIES; // prevent auto-reconnect
+        if (webSocketClient != null) {
             webSocketClient.close();
         }
     }
@@ -213,5 +330,8 @@ public class XiaozhiConnectionService extends Service {
     }
 
     @Override
-    public void onDestroy() { super.onDestroy(); }
+    public void onDestroy() {
+        if (webSocketClient != null) webSocketClient.close();
+        super.onDestroy();
+    }
 }
