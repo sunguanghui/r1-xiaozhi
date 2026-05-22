@@ -228,6 +228,8 @@ public class XiaozhiConnectionService extends Service {
             }
         } else {
             Log.i(TAG, "Device not activated - waiting for user action");
+            // 【新增这一行：如果没激活，直接强制代码触发连接和验证码流程！】
+            connect();
         }
 
         Log.i(TAG, "=======================");
