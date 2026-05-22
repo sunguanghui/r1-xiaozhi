@@ -138,6 +138,7 @@ public class XiaozhiConnectionService extends Service {
             @Override
             public void onActivationSuccess(String accessToken) {
                 Log.i(TAG, "激活成功，开始连接");
+                com.phicomm.r1.xiaozhi.util.PairingCodeGenerator.markAsPaired(XiaozhiConnectionService.this);
                 ConnectionListener l = connectionListener;
                 if (l != null) l.onPairingSuccess();
                 connect();
