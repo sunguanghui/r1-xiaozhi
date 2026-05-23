@@ -128,10 +128,7 @@ public class DeviceActivator {
                 Log.w(TAG, "Already activated locally but OTA returned no token — trying activation again.");
                 fingerprint.setActivationStatus(false);
             }
-                return;
-            }
 
-            // First-time activation: use challenge + code from server
             serverChallenge = response.activation.challenge;
             verificationCode = response.activation.code;
             Log.i(TAG, "Activation required - Verification code: " + verificationCode);
@@ -142,15 +139,12 @@ public class DeviceActivator {
             });
 
         } else {
-            // Server says device is activated but returned test-token (no real token yet)
-            Log.e(TAG, "OTA returned test-token after activation. Please bind the device to an agent on xiaozhi.me, then restart the App.");
-            fingerprint.setActivationStatus(true);
+            Log.e(TAG, "OTA returned no token and no activation data.");
             notifyError("请前往 xiaozhi.me，将设备加入智能体后重启 App。");
             isActivating.set(false);
         }
     }
     
-    /**
     /**
      * Cancel activation
      */
