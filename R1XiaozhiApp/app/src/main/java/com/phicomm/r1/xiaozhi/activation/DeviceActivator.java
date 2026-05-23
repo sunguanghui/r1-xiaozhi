@@ -154,18 +154,73 @@ public class DeviceActivator {
             // OTA returned websocket config without activation challenge
             Log.i(TAG, "Device already activated on server");
             fingerprint.setActivationStatus(true);
-            String token = fingerprint.getAccessToken();
-            if (token != null && !token.isEmpty()) {
-                notifySuccess(token);
-                isActivating.set(false);
-            } else {
-                Log.e(TAG, "No token available after OTA — cannot connect");
-                notifyError("Device is activated but no token returned by server. Please check xiaozhi.me device binding.");
-                isActivating.set(false);
-            }
+
+            // OTA may still return test-token if the device was just bound to an agent.
+            // Poll until a real token arrives (up to 3 minutes).
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    pollOTAForToken();
+                }
+            });
         }
     }
     
+    /**
+     * Poll OTA until a real token is returned (used after activation confirmed on server).
+     * Runs on a background thread.
+     */
+    private void pollOTAForToken() {
+        final int OTA_MAX_RETRIES = 36; // 36 × 5s = 180s
+        for (int attempt = 1; attempt <= OTA_MAX_RETRIES && isActivating.get(); attempt++) {
+            Log.i(TAG, "OTA token poll attempt " + attempt + "/" + OTA_MAX_RETRIES);
+            try {
+                final Object[] result = new Object[1];
+                final Object lock = new Object();
+                otaManager.fetchOTAConfig(new OTAConfigManager.OTACallback() {
+                    @Override public void onSuccess(OTAConfigManager.OTAResponse r) {
+                        synchronized (lock) { result[0] = r; lock.notifyAll(); }
+                    }
+                    @Override public void onError(String e) {
+                        synchronized (lock) { result[0] = e; lock.notifyAll(); }
+                    }
+                });
+                synchronized (lock) {
+                    if (result[0] == null) lock.wait(12000);
+                }
+                if (result[0] instanceof OTAConfigManager.OTAResponse) {
+                    OTAConfigManager.OTAResponse ota = (OTAConfigManager.OTAResponse) result[0];
+                    if (ota.websocket != null
+                            && ota.websocket.token != null
+                            && !ota.websocket.token.isEmpty()
+                            && !ota.websocket.token.equals("test-token")) {
+                        if (ota.websocket.url != null && !ota.websocket.url.isEmpty()) {
+                            fingerprint.setWebSocketUrl(ota.websocket.url);
+                        }
+                        fingerprint.setAccessToken(ota.websocket.token);
+                        Log.i(TAG, "Got real token from OTA");
+                        notifySuccess(ota.websocket.token);
+                        isActivating.set(false);
+                        return;
+                    }
+                }
+                Log.i(TAG, "OTA still returning test-token, retrying in 5s...");
+                Thread.sleep(RETRY_INTERVAL_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                Log.w(TAG, "OTA poll error: " + e.getMessage());
+                try { Thread.sleep(RETRY_INTERVAL_MS); } catch (InterruptedException ie) { break; }
+            }
+        }
+        if (isActivating.get()) {
+            Log.e(TAG, "OTA did not return a real token after 3 minutes");
+            notifyError("请前往 xiaozhi.me，将设备绑定到智能体后重启 App。");
+            isActivating.set(false);
+        }
+    }
+
     /**
      * Cancel activation
      */
