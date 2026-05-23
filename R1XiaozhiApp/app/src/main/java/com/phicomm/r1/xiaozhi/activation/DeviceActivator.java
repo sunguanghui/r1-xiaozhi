@@ -190,22 +190,51 @@ public class DeviceActivator {
                     
                     if (response.success) {
                         // Activation successful - user entered code on website
-                        Log.i(TAG, "Activation successful!");
+                        Log.i(TAG, "Activation successful! Now fetching real token via OTA...");
                         fingerprint.setActivationStatus(true);
                         fingerprint.clearVerificationCode();
-                        
-                        // Get or generate access token
-                        String accessToken = response.accessToken;
-                        if (accessToken == null || accessToken.isEmpty()) {
-                            // Generate token from device ID if server doesn't provide one
-                            Log.i(TAG, "Server didn't provide token, generating from device ID");
-                            accessToken = generateAccessToken(deviceId, serialNumber);
+
+                        // Re-fetch OTA to get the real websocket token now that device is bound
+                        OTAConfigManager.OTAResponse otaResponse = null;
+                        try {
+                            // Use the synchronous path: run OTA on this background thread
+                            final Object[] otaResult = new Object[1];
+                            final Object lock2 = new Object();
+                            otaManager.fetchOTAConfig(new OTAConfigManager.OTACallback() {
+                                @Override public void onSuccess(OTAConfigManager.OTAResponse r) {
+                                    synchronized (lock2) { otaResult[0] = r; lock2.notifyAll(); }
+                                }
+                                @Override public void onError(String e) {
+                                    synchronized (lock2) { otaResult[0] = e; lock2.notifyAll(); }
+                                }
+                            });
+                            synchronized (lock2) {
+                                if (otaResult[0] == null) lock2.wait(10000);
+                            }
+                            if (otaResult[0] instanceof OTAConfigManager.OTAResponse) {
+                                otaResponse = (OTAConfigManager.OTAResponse) otaResult[0];
+                            }
+                        } catch (Exception e) {
+                            Log.w(TAG, "OTA re-fetch interrupted: " + e.getMessage());
                         }
-                        
-                        // Save access token
+
+                        String accessToken = null;
+                        if (otaResponse != null && otaResponse.websocket != null
+                                && otaResponse.websocket.token != null
+                                && !otaResponse.websocket.token.isEmpty()
+                                && !otaResponse.websocket.token.equals("test-token")) {
+                            accessToken = otaResponse.websocket.token;
+                            Log.i(TAG, "Got real token from OTA after activation");
+                        } else {
+                            Log.e(TAG, "OTA still returned no real token after activation - cannot connect");
+                            notifyError("Activation succeeded but server did not return a token. Check xiaozhi.me device binding.");
+                            isActivating.set(false);
+                            return;
+                        }
+
                         fingerprint.setAccessToken(accessToken);
-                        Log.i(TAG, "Access token saved: " + (accessToken != null ? accessToken.substring(0, Math.min(30, accessToken.length())) + "..." : "null"));
-                        
+                        Log.i(TAG, "Access token saved: " + accessToken.substring(0, Math.min(30, accessToken.length())) + "...");
+
                         notifySuccess(accessToken);
                         isActivating.set(false);
                         return;
