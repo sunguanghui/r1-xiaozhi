@@ -74,10 +74,15 @@ public class DeviceActivator {
         }
         
         if (fingerprint.isActivated()) {
-            Log.i(TAG, "Device already activated");
-            notifySuccess(fingerprint.getAccessToken());
-            isActivating.set(false);
-            return;
+            String token = fingerprint.getAccessToken();
+            if (token != null && !token.isEmpty()) {
+                Log.i(TAG, "Device already activated, using saved token");
+                notifySuccess(token);
+                isActivating.set(false);
+                return;
+            }
+            // Activated flag set but no token — re-fetch OTA to get real token
+            Log.w(TAG, "Activated flag set but no token, re-fetching OTA...");
         }
         
         Log.i(TAG, "Starting activation - Fetching OTA config...");
@@ -146,10 +151,18 @@ public class DeviceActivator {
             
         } else {
             // No activation data - device already activated on server
+            // OTA returned websocket config without activation challenge
             Log.i(TAG, "Device already activated on server");
             fingerprint.setActivationStatus(true);
-            notifySuccess(fingerprint.getAccessToken());
-            isActivating.set(false);
+            String token = fingerprint.getAccessToken();
+            if (token != null && !token.isEmpty()) {
+                notifySuccess(token);
+                isActivating.set(false);
+            } else {
+                Log.e(TAG, "No token available after OTA — cannot connect");
+                notifyError("Device is activated but no token returned by server. Please check xiaozhi.me device binding.");
+                isActivating.set(false);
+            }
         }
     }
     
