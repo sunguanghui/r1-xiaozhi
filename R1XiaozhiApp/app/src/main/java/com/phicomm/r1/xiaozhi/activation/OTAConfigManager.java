@@ -132,8 +132,7 @@ public class OTAConfigManager {
             conn.setRequestProperty("User-Agent", BOARD_TYPE + "/" + APP_NAME + "-" + APP_VERSION);
             conn.setRequestProperty("Accept-Language", "zh-CN");
             
-            // Add Activation-Version header for v2 protocol
-            conn.setRequestProperty("Activation-Version", APP_VERSION);
+            conn.setRequestProperty("Activation-Version", "2");
             
             conn.setDoOutput(true);
             conn.setConnectTimeout(10000);
