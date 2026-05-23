@@ -5,7 +5,8 @@
       "Bash(cp /d/Project/r1-xiaozhi/*.txt /d/Project/r1-xiaozhi/docs/)",
       "Bash(powershell *)",
       "Bash(python3 -c ' *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(curl *)"
     ]
   }
 }
