@@ -94,8 +94,6 @@ public class XiaozhiConnectionService extends Service {
 
     /**
      * Ensure we have a valid token and are connected.
-     * The self-hosted URL (ws://192.168.1.15:12000/websocket) is a transparent nginx proxy
-     * to api.tenclass.net, so it still requires the same Bearer token as the cloud URL.
      */
     private void ensureConnected() {
         String token = deviceFingerprint.getAccessToken();
@@ -178,10 +176,16 @@ public class XiaozhiConnectionService extends Service {
     private void connectWithToken(final String accessToken) {
         isConnecting = true;
         try {
-            XiaozhiConfig config = new XiaozhiConfig(this);
-            URI serverUri = new URI(config.getActiveUrl());
+            // Use the WebSocket URL from OTA response, fallback to cloud default
+            String wsUrl = deviceFingerprint.getWebSocketUrl();
+            if (wsUrl == null || wsUrl.isEmpty()) {
+                wsUrl = XiaozhiConfig.DEFAULT_CLOUD_URL;
+                Log.i(TAG, "No OTA WebSocket URL saved, using default: " + wsUrl);
+            } else {
+                Log.i(TAG, "Using OTA WebSocket URL: " + wsUrl);
+            }
+            URI serverUri = new URI(wsUrl);
             Map<String, String> headers = new HashMap<>();
-            // Always send Authorization — the self-hosted proxy transparently forwards it to api.tenclass.net
             headers.put("Authorization", "Bearer " + accessToken);
 
             final WebSocketClient client = new WebSocketClient(serverUri, headers) {

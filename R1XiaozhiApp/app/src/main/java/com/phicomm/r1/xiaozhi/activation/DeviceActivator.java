@@ -113,6 +113,10 @@ public class DeviceActivator {
             fingerprint.setActivationStatus(true);
             fingerprint.clearVerificationCode();
             fingerprint.setAccessToken(response.websocket.token);
+            if (response.websocket.url != null && !response.websocket.url.isEmpty()) {
+                fingerprint.setWebSocketUrl(response.websocket.url);
+                Log.i(TAG, "Saved WebSocket URL: " + response.websocket.url);
+            }
             notifySuccess(response.websocket.token);
             isActivating.set(false);
             return;
@@ -225,6 +229,10 @@ public class DeviceActivator {
                                 && !otaResponse.websocket.token.equals("test-token")) {
                             accessToken = otaResponse.websocket.token;
                             Log.i(TAG, "Got real token from OTA after activation");
+                            if (otaResponse.websocket.url != null && !otaResponse.websocket.url.isEmpty()) {
+                                fingerprint.setWebSocketUrl(otaResponse.websocket.url);
+                                Log.i(TAG, "Saved WebSocket URL: " + otaResponse.websocket.url);
+                            }
                         } else {
                             Log.e(TAG, "OTA still returned no real token after activation - cannot connect");
                             notifyError("Activation succeeded but server did not return a token. Check xiaozhi.me device binding.");

@@ -27,10 +27,10 @@ public class XiaozhiConfig {
     private static final String KEY_LED_ENABLED = "led_enabled";
     private static final String KEY_HTTP_SERVER_PORT = "http_server_port";
 
-    // Default values — must match INSTALLATION_GUIDE.md
-    public static final boolean DEFAULT_USE_CLOUD = false;
+    // Default values
+    public static final boolean DEFAULT_USE_CLOUD = true;
     public static final String DEFAULT_CLOUD_URL = "wss://xiaozhi.me/websocket";
-    public static final String DEFAULT_SELF_HOSTED_URL = "ws://192.168.1.15:12000/websocket";
+    public static final String DEFAULT_SELF_HOSTED_URL = "";
     public static final String DEFAULT_WAKE_WORD = "小智";
     public static final int DEFAULT_HTTP_PORT = 8088;
     

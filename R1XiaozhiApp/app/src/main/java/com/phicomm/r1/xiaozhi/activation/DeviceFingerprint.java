@@ -29,6 +29,7 @@ public class DeviceFingerprint {
     private static final String KEY_ACCESS_TOKEN = "access_token";
     private static final String KEY_TOKEN_TIMESTAMP = "token_timestamp";
     private static final String KEY_VERIFICATION_CODE = "verification_code";
+    private static final String KEY_WEBSOCKET_URL = "websocket_url";
 
     // Token expiration: 24 hours (in milliseconds)
     private static final long TOKEN_EXPIRATION_MS = 24 * 60 * 60 * 1000;
@@ -367,6 +368,14 @@ public class DeviceFingerprint {
 
     public void clearVerificationCode() {
         prefs.edit().remove(KEY_VERIFICATION_CODE).apply();
+    }
+
+    public void setWebSocketUrl(String url) {
+        prefs.edit().putString(KEY_WEBSOCKET_URL, url).apply();
+    }
+
+    public String getWebSocketUrl() {
+        return prefs.getString(KEY_WEBSOCKET_URL, null);
     }
     
     /**
