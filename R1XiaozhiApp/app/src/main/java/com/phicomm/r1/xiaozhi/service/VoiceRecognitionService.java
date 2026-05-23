@@ -84,17 +84,16 @@ public class VoiceRecognitionService extends Service {
         createNotificationChannel();
         startForeground(NOTIFICATION_ID, createNotification());
 
-        // FIX #2: Check permission before starting recording
         if (checkRecordAudioPermission()) {
             startRecording();
         } else {
-            Log.e(TAG, "=== RECORD_AUDIO PERMISSION DENIED ===");
-            Log.e(TAG, "Cannot start recording without permission!");
-            Log.e(TAG, "Service will run but recording is disabled.");
-
+            Log.e(TAG, "RECORD_AUDIO permission not granted, stopping service to avoid crash loop");
             if (callback != null) {
                 callback.onError("No microphone permission");
             }
+            // Stop self instead of restarting — prevents START_STICKY crash loop
+            stopSelf();
+            return START_NOT_STICKY;
         }
 
         return START_STICKY;

@@ -103,9 +103,12 @@ public class DeviceActivator {
      * STEP 2: Parse activation data or proceed if already activated
      */
     private void handleOTAResponse(OTAConfigManager.OTAResponse response) {
-        // If OTA returned a websocket token directly, save it and connect
+        // If OTA returned a real websocket token directly, save it and connect.
+        // Reject placeholder values like "test-token" that the server returns
+        // when the device is not yet bound to any user account.
         if (response.websocket != null && response.websocket.token != null
-                && !response.websocket.token.isEmpty()) {
+                && !response.websocket.token.isEmpty()
+                && !response.websocket.token.equals("test-token")) {
             Log.i(TAG, "OTA returned access token directly");
             fingerprint.setActivationStatus(true);
             fingerprint.clearVerificationCode();

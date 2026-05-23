@@ -28,19 +28,24 @@ public class BootReceiver extends BroadcastReceiver {
             
             // Only auto-start if user has enabled the option
             if (config.isAutoStart()) {
-                // // Start LED service first
-                // Intent ledIntent = new Intent(context, LEDControlService.class);
-                // ledIntent.setAction(LEDControlService.ACTION_SET_IDLE);
-                // context.startService(ledIntent);
-                
+                // Re-enable ADB TCP on boot so Wi-Fi ADB survives reboots
+                try {
+                    Runtime.getRuntime().exec(new String[]{"setprop", "service.adb.tcp.port", "5555"});
+                    Runtime.getRuntime().exec(new String[]{"stop", "adbd"});
+                    Runtime.getRuntime().exec(new String[]{"start", "adbd"});
+                    Log.d(TAG, "ADB TCP port 5555 re-enabled on boot");
+                } catch (Exception e) {
+                    Log.w(TAG, "Could not re-enable ADB TCP (no root): " + e.getMessage());
+                }
+
                 // Start Xiaozhi connection service
                 Intent xiaozhiIntent = new Intent(context, XiaozhiConnectionService.class);
                 context.startService(xiaozhiIntent);
-                
+
                 // Start voice recognition service
                 Intent voiceIntent = new Intent(context, VoiceRecognitionService.class);
                 context.startService(voiceIntent);
-                
+
                 Log.d(TAG, "All services started successfully");
             } else {
                 Log.d(TAG, "Auto-start disabled in config");
