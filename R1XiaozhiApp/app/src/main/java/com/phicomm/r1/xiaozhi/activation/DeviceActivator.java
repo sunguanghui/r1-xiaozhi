@@ -207,48 +207,56 @@ public class DeviceActivator {
                     
                     if (response.success) {
                         // Activation successful - user entered code on website
-                        Log.i(TAG, "Activation successful! Now fetching real token via OTA...");
+                        Log.i(TAG, "Activation successful! Polling OTA for real token (user must bind device to agent on xiaozhi.me)...");
                         fingerprint.setActivationStatus(true);
                         fingerprint.clearVerificationCode();
 
-                        // Re-fetch OTA to get the real websocket token now that device is bound
-                        OTAConfigManager.OTAResponse otaResponse = null;
-                        try {
-                            // Use the synchronous path: run OTA on this background thread
-                            final Object[] otaResult = new Object[1];
-                            final Object lock2 = new Object();
-                            otaManager.fetchOTAConfig(new OTAConfigManager.OTACallback() {
-                                @Override public void onSuccess(OTAConfigManager.OTAResponse r) {
-                                    synchronized (lock2) { otaResult[0] = r; lock2.notifyAll(); }
+                        // Poll OTA until a real token is returned (up to 2 minutes).
+                        // The user needs time to assign the device to an Agent on xiaozhi.me.
+                        String accessToken = null;
+                        final int OTA_MAX_RETRIES = 36; // 36 × 5s = 180s
+                        for (int otaAttempt = 1; otaAttempt <= OTA_MAX_RETRIES && isActivating.get(); otaAttempt++) {
+                            Log.i(TAG, "OTA token poll attempt " + otaAttempt + "/" + OTA_MAX_RETRIES + " — waiting for agent binding on xiaozhi.me...");
+                            try {
+                                final Object[] otaResult = new Object[1];
+                                final Object lock2 = new Object();
+                                otaManager.fetchOTAConfig(new OTAConfigManager.OTACallback() {
+                                    @Override public void onSuccess(OTAConfigManager.OTAResponse r) {
+                                        synchronized (lock2) { otaResult[0] = r; lock2.notifyAll(); }
+                                    }
+                                    @Override public void onError(String e) {
+                                        synchronized (lock2) { otaResult[0] = e; lock2.notifyAll(); }
+                                    }
+                                });
+                                synchronized (lock2) {
+                                    if (otaResult[0] == null) lock2.wait(12000);
                                 }
-                                @Override public void onError(String e) {
-                                    synchronized (lock2) { otaResult[0] = e; lock2.notifyAll(); }
+                                if (otaResult[0] instanceof OTAConfigManager.OTAResponse) {
+                                    OTAConfigManager.OTAResponse otaResponse = (OTAConfigManager.OTAResponse) otaResult[0];
+                                    if (otaResponse.websocket != null
+                                            && otaResponse.websocket.token != null
+                                            && !otaResponse.websocket.token.isEmpty()
+                                            && !otaResponse.websocket.token.equals("test-token")) {
+                                        accessToken = otaResponse.websocket.token;
+                                        if (otaResponse.websocket.url != null && !otaResponse.websocket.url.isEmpty()) {
+                                            fingerprint.setWebSocketUrl(otaResponse.websocket.url);
+                                            Log.i(TAG, "Saved WebSocket URL: " + otaResponse.websocket.url);
+                                        }
+                                        Log.i(TAG, "Got real token from OTA after activation");
+                                        break;
+                                    } else {
+                                        Log.i(TAG, "OTA still returning test-token, retrying in 5s...");
+                                    }
                                 }
-                            });
-                            synchronized (lock2) {
-                                if (otaResult[0] == null) lock2.wait(10000);
+                            } catch (Exception e) {
+                                Log.w(TAG, "OTA poll interrupted: " + e.getMessage());
                             }
-                            if (otaResult[0] instanceof OTAConfigManager.OTAResponse) {
-                                otaResponse = (OTAConfigManager.OTAResponse) otaResult[0];
-                            }
-                        } catch (Exception e) {
-                            Log.w(TAG, "OTA re-fetch interrupted: " + e.getMessage());
+                            try { Thread.sleep(RETRY_INTERVAL_MS); } catch (InterruptedException ie) { break; }
                         }
 
-                        String accessToken = null;
-                        if (otaResponse != null && otaResponse.websocket != null
-                                && otaResponse.websocket.token != null
-                                && !otaResponse.websocket.token.isEmpty()
-                                && !otaResponse.websocket.token.equals("test-token")) {
-                            accessToken = otaResponse.websocket.token;
-                            Log.i(TAG, "Got real token from OTA after activation");
-                            if (otaResponse.websocket.url != null && !otaResponse.websocket.url.isEmpty()) {
-                                fingerprint.setWebSocketUrl(otaResponse.websocket.url);
-                                Log.i(TAG, "Saved WebSocket URL: " + otaResponse.websocket.url);
-                            }
-                        } else {
-                            Log.e(TAG, "OTA still returned no real token after activation - cannot connect");
-                            notifyError("Activation succeeded but server did not return a token. Check xiaozhi.me device binding.");
+                        if (accessToken == null) {
+                            Log.e(TAG, "OTA did not return a real token after 2 minutes. Please bind the device to an Agent on xiaozhi.me.");
+                            notifyError("请前往 xiaozhi.me，将设备绑定到一个智能体后重启 App。");
                             isActivating.set(false);
                             return;
                         }
